@@ -1,0 +1,1031 @@
+<!-- {:)} from @jms
+     (c) 2026 @jms. Original work. Modified versions are welcome; please keep this notice.
+     Changes: (날짜 / 내용) 을 아래에 한 줄씩 추가하세요.
+     2026-10-14 / Spot Calibration · Control 분리, Knowledge Base 디자인 · 모바일 화면, 로고 -->
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control 계산기</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='28' fill='%232B3050'/%3E%3Cg transform='translate(12.4 14.4) scale(.78)'%3E%3Crect x='12' y='52' width='46' height='46' rx='20' fill='%23F7F8FA'/%3E%3Cpath d='M64 98C72 72 77 52 84 52C91 52 96 72 104 98' fill='none' stroke='%23F7F8FA' stroke-width='12' stroke-linecap='round'/%3E%3Ccircle cx='60' cy='26' r='13' fill='%23FF6A4D'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap">
+<style>
+/* Layout: fixed left rail (nav) + fluid work area; every screen is a "desk sheet" scanned during a call, not read top to bottom. */
+/* Layout: desktop-OS workspace. Sandy desk canvas, file-manager rail on the left, one white application window (title bar = current file) holding the page. */
+:root{
+  --bg:#e1d7c2; --paper:#ffffff; --cream:#fdfdf8; --paper2:#eeefe9; --stone:#e5e7e0; --line:#bfc1b7; --line2:#e5e7e0;
+  --fg:#23251d; --fg2:#4d4f46; --fg3:#65675e; --fg4:#9ea096; --ink:#23251d;
+  --accent:#2f80fa; --accent-soft:#e7effc; --accent-fg:#1c6fe6;
+  --amber:#eb9d2a; --amber-dk:#cd8407; --gold:#b17816; --marigold:#f1a82c; --flame:#f54e00; --moss:#6aa84f;
+  --good:#4b8a33; --good-soft:#e8f1e2; --warn:#a86f0f; --warn-soft:#fbf0dc; --bad:#d14300; --bad-soft:#fde9df; --info:#1c6fe6; --info-soft:#e7effc;
+  --cold:#1c6fe6; --room:#d14300;
+  --shadow:rgba(0,0,0,.25) 0 25px 50px -12px;
+  --font:"DM Sans","IBM Plex Sans KR",ui-sans-serif,system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --ui:"IBM Plex Sans","IBM Plex Sans KR",ui-sans-serif,system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --mono:"Source Code Pro",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r:6px; --r2:4px; --rail:232px; --page:1120px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--accent-fg)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+img{max-width:100%;height:auto}
+h1,h2,h3,h4{margin:0;line-height:1.25;text-wrap:balance;letter-spacing:-.01em}
+p{margin:0}
+ul,ol{margin:0;padding-left:1.25em}
+code{font-family:var(--mono);font-size:.92em;background:var(--paper2);border:1px solid var(--line);border-radius:4px;padding:.05em .4em}
+mark{background:var(--warn-soft);color:inherit;border-radius:3px;padding:0 .2em;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line2);text-align:left;vertical-align:top}
+thead th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--fg3);font-weight:600;background:var(--paper2);position:sticky;top:0}
+tbody th{font-weight:600;color:var(--fg2);background:var(--paper2);width:1%;white-space:nowrap}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r2);background:var(--paper)}
+.tblwrap table{min-width:640px}
+.tblwrap.narrow table{min-width:0}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.em-red{color:var(--bad);font-weight:700}.em-blue{color:var(--info);font-weight:700}
+.tag-qual{display:inline-block;margin-left:6px;font-size:11px;padding:1px 7px;border-radius:99px;background:var(--info-soft);color:var(--info);font-weight:600;vertical-align:middle}
+.tag-internal{display:inline-block;font-size:11px;padding:1px 7px;border-radius:4px;background:var(--bad-soft);color:var(--bad);font-weight:700}
+[hidden]{display:none!important}
+
+/* ---------- shell */
+.app{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100%}
+.rail{position:sticky;top:0;height:100vh;height:100dvh;overflow-y:auto;background:var(--paper);border-right:1px solid var(--line);padding:18px 14px 28px;display:flex;flex-direction:column;gap:14px}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 6px 8px}
+.brand .logo{width:34px;height:34px;border-radius:4px;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.02em}
+.brand b{display:block;font-size:14px;letter-spacing:-.01em}
+.brand small{display:block;color:var(--fg3);font-size:11px;font-family:var(--mono)}
+.navgroup{display:flex;flex-direction:column;gap:2px}
+.navgroup .gl{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);padding:10px 8px 4px}
+.navbtn{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:4px;text-align:left;width:100%;color:var(--fg2);font-weight:500;font-size:13px}
+.navbtn:hover{background:var(--paper2);color:var(--fg)}
+.navbtn.active{background:var(--accent-soft);color:var(--accent-fg);font-weight:700}
+.navbtn .ic{width:18px;height:18px;flex:0 0 18px;color:currentColor;opacity:.85}
+.navbtn small{margin-left:auto;font-size:11px;color:var(--fg3);font-weight:500}
+.navbtn .dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:10px 24px;display:flex;align-items:center;gap:12px}
+.topbar .crumb{font-family:var(--mono);font-size:11.5px;color:var(--fg3);letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search{position:relative;flex:1;max-width:560px;margin-left:auto}
+.search input{width:100%;padding:9px 12px 9px 36px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--fg);font:inherit;font-size:13.5px}
+.search input::placeholder{color:var(--fg3)}
+.search .sic{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--fg3);pointer-events:none}
+.search .kbd{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10.5px;color:var(--fg3);border:1px solid var(--line);border-radius:4px;padding:1px 5px;pointer-events:none}
+.sresults{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--paper);border:1px solid var(--line);border-radius:4px;box-shadow:none;max-height:70vh;overflow:auto;padding:6px;z-index:30}
+.sresults .sg{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);padding:8px 10px 4px}
+.sresults .sr{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:4px;text-align:left}
+.sresults .sr:hover,.sresults .sr.focus{background:var(--accent-soft)}
+.sresults .sr b{font-weight:600}
+.sresults .sr small{color:var(--fg3);margin-left:auto;font-size:11.5px;white-space:nowrap}
+.sresults .warnrow{margin:6px;padding:8px 10px;border-radius:4px;background:var(--warn-soft);font-size:12.5px}
+.menubtn{display:none;width:38px;height:38px;border-radius:4px;border:1px solid var(--line);background:var(--paper);place-items:center}
+.backdrop{display:none;position:fixed;inset:0;background:rgba(10,20,35,.45);z-index:40}
+.content{padding:22px 24px 60px;display:flex;flex-direction:column;gap:18px;max-width:1360px;width:100%}
+.pagehead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 18px}
+.pagehead .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-fg);margin-bottom:6px}
+.pagehead h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.pagehead .lead{color:var(--fg2);font-size:13.5px;max-width:64ch}
+.pagehead .acts{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px}
+
+/* ---------- components */
+.stdcard{scroll-margin-top:104px}
+#stdtabs{scroll-margin-top:104px}
+#stdtabs .sbsbtn{margin-left:auto;align-self:center}
+#stdtabs .sbsbtn.active{background:var(--fg);border-color:var(--fg);color:var(--paper)}
+#stdtabs.sbs-on [data-stdview]{display:none}
+#stdwrap.sbs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+#stdwrap.sbs #stdans{order:1}
+#stdwrap.sbs #stdinfo{order:2;position:sticky;top:104px;max-height:calc(100vh - 124px);overflow:auto;gap:12px}
+#stdwrap.sbs #stdinfo .devlayout{grid-template-columns:1fr}
+#stdwrap.sbs #stdinfo .devlayout .photo{position:static;flex-direction:row;flex-wrap:wrap;align-items:center}
+#stdwrap.sbs #stdinfo .devlayout .photo img{width:140px}
+@media (max-width:1099px){#stdtabs .sbsbtn{display:none}}
+body.wide .app{grid-template-columns:1fr}
+body.wide .rail{position:fixed;left:0;top:0;bottom:0;width:min(300px,86vw);z-index:50;transform:translateX(-102%);transition:transform .18s;background:var(--bg)}
+body.wide .rail.open{transform:none}
+body.wide .backdrop.open{display:block}
+body.wide .menubtn{display:grid}
+body.wide .window{max-width:none}
+body.wide .deskwrap{padding:20px 16px 48px}
+body.wide .content{padding:22px 24px 40px}
+.stdcard .card-h h3{flex:0 1 auto}
+.stdcard .bubble{max-width:none}
+.stdcard .case3 .cell{min-width:0;overflow-wrap:anywhere}
+.std-none{color:var(--fg4)}
+.std-sec{padding:6px 2px 0;color:var(--gold)}
+@media (max-width:820px){.stdcard .card-h .right{margin-left:0}}
+
+.spotcal-card{padding:16px}
+.spotwidebtn.active{background:var(--fg);border-color:var(--fg);color:var(--paper)}
+@media (max-width:820px){.btn.spotwidebtn{display:none}}
+.spotcal-frame{display:block;width:100%;height:1400px;border:0;background:#fff}
+@media (max-width:640px){.spotcal-card{padding:0;border:0;background:none}}
+
+/* 컨트롤 · vial 계산 */
+.ctlrows{display:flex;flex-direction:column;gap:8px}
+.ctlrow{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.2fr) minmax(0,1.2fr) 84px 116px auto;gap:8px;align-items:center}
+.ctlrow select,.ctlrow input{width:100%;min-width:0;padding:7px 10px;border:1px solid var(--line);border-radius:4px;background:var(--cream);color:var(--fg);font:inherit;font-family:var(--ui);font-size:13px}
+.ctlrow .ctln{display:flex;align-items:center;gap:6px}
+.ctlac{position:relative;min-width:0}
+.ctlrow .ctlac input.ok{border-color:var(--good);background:var(--paper)}
+.ctlac-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:35;max-height:260px;overflow-y:auto;background:var(--paper);border:1px solid var(--line);border-radius:4px;box-shadow:var(--shadow);padding:4px;min-width:200px}
+.ctlac-opt{display:flex;align-items:baseline;gap:8px;padding:7px 9px;border-radius:4px;cursor:pointer;font-size:13px}
+.ctlac-opt:hover,.ctlac-opt.act{background:var(--accent-soft)}
+.ctlac-opt .via{font-size:11.5px;color:var(--fg3)}
+.ctlac-opt small{margin-left:auto;font-size:11px;color:var(--fg3);white-space:nowrap}
+.ctlac-none{padding:8px 10px;font-size:12.5px;color:var(--fg3)}
+.ctlrow .ctln span{color:var(--fg3);font-size:12.5px;white-space:nowrap}
+.ctlrow .ctlx{width:32px;height:32px;border-radius:4px;border:1px solid var(--line);display:grid;place-items:center;font-size:16px;color:var(--fg3)}
+.ctlrow .ctlx:hover{background:var(--stone);color:var(--fg)}
+.ctlhead{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.2fr) minmax(0,1.2fr) 84px 116px 32px;gap:8px;font-size:11.5px;font-weight:600;color:var(--fg3)}
+.ctlres .spec .s b.big{font-family:var(--mono);font-size:22px;font-weight:600;line-height:1.2}
+.ctlres .s.tot{border-color:var(--accent);background:var(--accent-soft)}
+.ctlnote{font-size:12px;color:var(--fg3)}
+.ctlwarn{grid-column:1/-1;display:flex;gap:6px;align-items:flex-start;font-size:12px;color:var(--warn)}
+.ctlwarn .cic{flex:0 0 14px;width:14px;height:14px;margin-top:2px}
+table.ctltbl{min-width:860px}
+table.ctltbl th.ctlname{white-space:nowrap;vertical-align:top}
+table.ctltbl tbody.ctlgrp{border-top:2px solid var(--line)}
+table.ctltbl td[rowspan]{vertical-align:top}
+table.ctltbl td{white-space:normal}
+table.ctltbl td[rowspan],table.ctltbl .btn,table.ctltbl .mname button{white-space:nowrap}
+table.ctltbl td.mname{min-width:120px;font-weight:700}
+table.ctltbl th,table.ctltbl td{padding:8px 8px}
+table.ctltbl td.ctlgm{min-width:90px}
+table.ctltbl .ctlsub{display:block;font-size:11px;color:var(--fg3);font-weight:500}
+table.ctltbl .ctlaltpill{margin-left:6px;font-size:10.5px;padding:1px 7px}
+table.ctltbl tr.ctlalt td{background:var(--cream)}
+.ctlres .card-h .pill{align-self:center}
+table.ctltbl td.num b{white-space:nowrap}
+table.ctltbl td.mname{white-space:nowrap;font-weight:700}
+table.ctltbl td.mname .st{display:block;font-size:10.5px;font-weight:600;margin-top:2px}
+@media (max-width:820px){.ctlhead{display:none}.ctlrow{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:10px;border:1px solid var(--line2);border-radius:4px;background:var(--paper2)}.ctlrow .ctlx{justify-self:end}}
+
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;min-width:0}
+.card.soft{background:var(--paper2)}
+.card-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:12px}
+.card-h h3{font-size:15px;font-weight:700}
+.card-h h2{font-size:17px;font-weight:800}
+.card-h .sub{color:var(--fg3);font-size:12.5px}
+.card-h .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.stack{display:flex;flex-direction:column;gap:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.gridauto{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:4px;border:1px solid var(--line);background:var(--paper);font-weight:600;font-size:12.5px;color:var(--fg2);line-height:1.2}
+.btn:hover{border-color:var(--accent);color:var(--accent-fg)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.primary:hover{color:#fff;opacity:.92}
+.btn.accent{background:var(--accent-soft);color:var(--accent-fg);border-color:transparent}
+.btn.sm{padding:4px 9px;font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;padding:4px 10px;border-radius:99px;border:1px solid var(--line);background:var(--paper);font-size:12.5px;font-weight:500;color:var(--fg2);line-height:1.3}
+button.chip:hover{border-color:var(--accent);color:var(--accent-fg)}
+.chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chip.soft{background:var(--paper2);border-color:transparent}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:700;letter-spacing:.02em}
+.pill.good{background:var(--good-soft);color:var(--good)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.bad{background:var(--bad-soft);color:var(--bad)}.pill.info{background:var(--info-soft);color:var(--info)}.pill.gray{background:var(--paper2);color:var(--fg2);border:1px solid var(--line)}
+.pill.cold{background:var(--info-soft);color:var(--cold)}.pill.room{background:var(--bad-soft);color:var(--room)}
+.callout{display:flex;gap:10px;padding:11px 14px;border-radius:4px;border:1px solid var(--line);background:var(--paper2);font-size:13px}
+.callout .cic{flex:0 0 18px;width:18px;height:18px;margin-top:1px}
+.callout.warn{background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 35%,transparent);color:var(--fg)}
+.callout.bad{background:var(--bad-soft);border-color:color-mix(in srgb,var(--bad) 30%,transparent)}
+.callout.info{background:var(--info-soft);border-color:color-mix(in srgb,var(--info) 30%,transparent)}
+.callout.good{background:var(--good-soft);border-color:color-mix(in srgb,var(--good) 30%,transparent)}
+.callout b.t{display:block;margin-bottom:2px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+.kv dt{color:var(--fg3);font-weight:500;white-space:nowrap}.kv dd{margin:0;font-weight:500}
+.spec{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.spec .s{background:var(--paper2);border:1px solid var(--line2);border-radius:4px;padding:8px 10px;min-width:0}
+.spec .s small{display:block;color:var(--fg3);font-size:11px;margin-bottom:2px}
+.spec .s b{font-weight:600;font-size:13px;word-break:break-word}
+.spec .s.key{border-color:var(--accent);background:var(--accent-soft)}
+.spec .s.alert{border-color:color-mix(in srgb,var(--bad) 40%,transparent);background:var(--bad-soft)}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.tabs .tab{padding:7px 12px;border-radius:4px 8px 0 0;font-weight:600;font-size:13px;color:var(--fg3);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs .tab:hover{color:var(--fg)}
+.tabs .tab.active{color:var(--accent-fg);border-bottom-color:var(--accent)}
+.tabs.pills{border:0;gap:6px;margin-bottom:12px}
+.tabs.pills .tab{border:1px solid var(--line);border-radius:99px;padding:5px 12px;margin:0}
+.tabs.pills .tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.step{background:var(--paper2);border:1px solid var(--line2);border-radius:4px;overflow:hidden;min-width:0}
+.step .simg{aspect-ratio:4/3;background:var(--paper);display:grid;place-items:center;overflow:hidden;border-bottom:1px solid var(--line2)}
+.step .simg img{width:100%;height:100%;object-fit:contain;cursor:zoom-in}
+.step .scap{padding:9px 11px;font-size:12.5px}
+.step .scap b{display:block;font-weight:700;margin-bottom:2px}
+.step .scap span{color:var(--fg2)}
+.nlist{display:flex;flex-direction:column;gap:10px}
+.nstep{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
+.nstep .n{width:28px;height:28px;border-radius:4px;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:var(--mono);font-weight:600;font-size:12.5px}
+.nstep .nb{min-width:0}.nstep .nb b{display:block;font-weight:700}.nstep .nb span{color:var(--fg2);font-size:13px}
+.nstep .nb .ptag{display:inline-block;margin-left:6px;font-size:11px;padding:1px 7px;border-radius:99px;background:var(--bad-soft);color:var(--bad);font-weight:700;vertical-align:middle}
+ol.plain{display:flex;flex-direction:column;gap:5px;padding-left:1.4em;font-size:13px}
+ul.checks{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13px}
+ul.checks li{display:flex;gap:8px;align-items:flex-start}
+ul.checks li::before{content:"";flex:0 0 16px;width:16px;height:16px;margin-top:2px;border-radius:4px;background:var(--good-soft);border:1px solid color-mix(in srgb,var(--good) 40%,transparent);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f8f4e' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E");background-size:11px;background-position:center;background-repeat:no-repeat}
+.figure{margin:0;display:flex;flex-direction:column;gap:6px}
+.figure img{border:1px solid var(--line);border-radius:4px;background:var(--paper);cursor:zoom-in;max-height:520px;object-fit:contain}
+.figure figcaption{font-size:12px;color:var(--fg3)}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.gallery img{width:100%;border:1px solid var(--line);border-radius:4px;cursor:zoom-in;background:var(--paper)}
+.bubble{display:flex;gap:10px;max-width:760px}
+.bubble .who{flex:0 0 auto;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--fg3);padding-top:9px;width:64px;text-transform:uppercase}
+.bubble .msg{padding:9px 13px;border-radius:4px;font-size:13.5px;border:1px solid var(--line);background:var(--paper2)}
+.bubble.customer .msg{background:var(--paper);font-style:italic}
+.bubble.csc .msg{background:var(--accent-soft);border-color:transparent;color:var(--fg)}
+.bubble.answer .msg{background:var(--good-soft);border-color:transparent}
+.bubble.answer.warn .msg{background:var(--warn-soft)}
+.bubble.answer.tech .msg{background:var(--bad-soft)}
+.bubble .msg .cap{display:block;font-size:11px;font-weight:700;color:var(--fg3);margin-bottom:3px;letter-spacing:.04em}
+.choice{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0 74px}
+.choice .chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.miniwhy{margin:8px 0 0 74px;font-size:12.5px;color:var(--fg2);padding:8px 12px;border-left:3px solid var(--accent);background:var(--paper2);border-radius:0 8px 8px 0}
+.codegrid{display:flex;flex-wrap:wrap;gap:6px}
+.codegrid .chip{font-family:var(--mono);font-weight:600}
+.case3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.case3 .cell{padding:10px 12px;border-radius:4px;background:var(--paper2);border:1px solid var(--line2);font-size:13px}
+.case3 .cell .lb{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.case3 .cell.cause .lb{color:var(--warn)}.case3 .cell.check .lb{color:var(--info)}.case3 .cell.action .lb{color:var(--good)}
+.case3 .cell .lb::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+details.acc{border:1px solid var(--line);border-radius:4px;background:var(--paper);overflow:hidden}
+details.acc summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:13px;list-style:none;display:flex;align-items:center;gap:8px}
+details.acc summary::-webkit-details-marker{display:none}
+details.acc summary::after{content:"▾";margin-left:auto;color:var(--fg3);transition:transform .15s}
+details.acc[open] summary::after{transform:rotate(180deg)}
+details.acc .acc-body{padding:4px 14px 14px;border-top:1px solid var(--line2)}
+.memo{display:flex;flex-direction:column;gap:4px}
+.memo label{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+.memo textarea,.memo input{width:100%;font:inherit;font-size:12.5px;padding:7px 10px;border:1px dashed var(--line);border-radius:4px;background:var(--paper2);color:var(--fg);resize:vertical}
+.memo .hint{font-size:11px;color:var(--fg3)}
+.notice{font-size:12.5px;color:var(--fg3);border-top:1px solid var(--line);padding-top:12px;display:flex;flex-wrap:wrap;gap:6px 16px}
+.imglink{color:var(--accent-fg);text-decoration:underline dotted;cursor:pointer;font-weight:600}
+.storagegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.termchips .chip{background:var(--paper2);border-color:transparent}
+
+/* ---------- home */
+.hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:stretch}
+.hero .lead{font-size:14px;color:var(--fg2);max-width:60ch}
+.hero h1{font-size:28px;font-weight:800;letter-spacing:-.025em}
+.hero .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-fg)}
+.panelgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.pcard{position:relative;text-align:left;padding:14px 14px 12px;border-radius:4px;border:1px solid var(--line);background:var(--paper);display:flex;flex-direction:column;gap:6px;min-height:118px;transition:transform .12s,border-color .12s}
+.pcard:hover{transform:translateY(-2px);border-color:var(--accent)}
+.pcard .pn{font-family:var(--mono);font-size:10.5px;color:var(--fg3);letter-spacing:.1em}
+.pcard .pen{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-fg)}
+.pcard b{font-size:17px;font-weight:800}
+.pcard small{color:var(--fg3);font-size:12px}
+.pcard .swatch{position:absolute;top:14px;right:14px;width:10px;height:10px;border-radius:50%}
+.sw-blue{background:#3b82f6}.sw-violet{background:#8b5cf6}.sw-mint{background:#10b981}.sw-sand{background:#d97706}.sw-sky{background:#0ea5e9}.sw-rose{background:#f43f5e}.sw-ice{background:#67c3e8}.sw-lilac{background:#a78bfa}.sw-aqua{background:#14b8a6}.sw-slate{background:#64748b}
+.quicklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.qbtn{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:4px;background:var(--paper);text-align:left;font-weight:600;font-size:13px}
+.qbtn:hover{border-color:var(--accent);color:var(--accent-fg)}
+.qbtn .ic{width:18px;height:18px;flex:0 0 18px;color:var(--accent-fg)}
+.qbtn small{display:block;font-weight:500;color:var(--fg3);font-size:11.5px}
+
+/* ---------- marker */
+.mhead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center}
+.signal{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.5px}
+.signal .sp{padding:3px 10px;border-radius:99px;background:var(--paper2);border:1px solid var(--line);font-weight:600}
+.signal .sa{color:var(--fg3)}
+.mcols{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+.core{font-size:16px;font-weight:600;line-height:1.5}
+.core-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--accent-fg);margin-bottom:6px;letter-spacing:.04em}
+.mcard{text-align:left;padding:14px;border:1px solid var(--line);border-radius:4px;background:var(--paper);display:flex;flex-direction:column;gap:4px;transition:border-color .12s}
+.mcard:hover{border-color:var(--accent)}
+.mcard b{font-size:16px;font-weight:800}
+.mcard .mo{font-size:13px;color:var(--fg)}
+.mcard .md{font-size:12.5px;color:var(--fg3)}
+.mcard .go{margin-top:auto;padding-top:6px;font-size:12px;font-weight:700;color:var(--accent-fg)}
+.spectable td.mname{font-weight:700;white-space:nowrap}
+.spectable td.mname .st{display:block;font-size:10.5px;font-weight:600;margin-top:2px}
+.spectable td.hl{background:var(--accent-soft)}
+tr.clickable{cursor:pointer}tr.clickable:hover td{background:var(--paper2)}
+.thyroid-ref td .alert{display:block;color:var(--bad);font-size:11.5px;font-weight:700}
+
+/* ---------- tip box */
+.tbflow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:700}
+.tbflow b{width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;display:inline-grid;place-items:center;font-family:var(--mono);font-size:11.5px}
+.tbflow i{color:var(--fg3);font-style:normal}
+.tbsteps{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.tbsteps .ts{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:4px;border:1px solid var(--line);background:var(--paper2);font-size:12.5px;font-weight:600}
+.tbsteps .ts em{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--fg3)}
+.tbsteps .ts.focus{border-color:var(--accent);background:var(--accent-soft)}
+.tbsteps .ts.reset{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.tbsteps i{color:var(--fg3);font-style:normal}
+.tube-order{display:flex;align-items:center;gap:10px}
+.tube{padding:8px 14px;border-radius:4px;border:1px solid var(--line);background:var(--paper);text-align:center}
+.tube b{display:block}.tube span{font-size:12px;color:var(--fg3)}
+.tube-order .arrow{color:var(--fg3)}
+.path{font-weight:700;color:var(--accent-fg)}
+
+/* ---------- pattern guides */
+.branches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.branch{border:1px solid var(--line);border-radius:4px;padding:14px;background:var(--paper2);display:flex;flex-direction:column;gap:10px}
+.branch .bpill{border-radius:4px;padding:8px 12px;background:var(--paper);border:1px solid var(--line)}
+.branch .bpill b{display:block}.branch .bpill small{color:var(--fg3)}
+.branch.up .bpill{border-color:color-mix(in srgb,var(--bad) 40%,transparent)}.branch.down .bpill{border-color:color-mix(in srgb,var(--info) 40%,transparent)}
+.branch .big{font-size:26px;font-weight:800;font-family:var(--mono)}
+.branch.up .big{color:var(--bad)}.branch.down .big{color:var(--info)}
+.bitem{background:var(--paper);border:1px solid var(--line2);border-radius:4px;padding:10px 12px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.bitem .btag{font-family:var(--mono);font-weight:600;font-size:12.5px}
+.bitem .btip{margin-top:4px;font-size:12px;color:var(--accent-fg);font-weight:600}
+.callstart{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;font-size:13.5px}
+.callstart .q{padding:10px 14px;border-radius:4px;background:var(--paper2);border:1px solid var(--line)}
+.callstart .t{padding:10px 14px;border-radius:4px;background:var(--accent-soft)}
+.callstart .t span{display:block;font-size:11px;color:var(--fg3);font-weight:700;margin-bottom:2px}
+.callstart .ar{color:var(--fg3);font-size:20px}
+.up{color:var(--bad);font-weight:700}.down{color:var(--info);font-weight:700}
+.defcard{border:1px solid var(--line);border-radius:4px;padding:12px 14px;background:var(--paper);display:flex;flex-direction:column;gap:3px}
+.defcard .dn{font-size:16px;font-weight:800}.defcard .dd{font-size:13px}.defcard .da{font-size:12.5px;color:var(--fg3)}
+.defcard.insulin{border-top:3px solid #d97706}.defcard.cpeptide{border-top:3px solid #10b981}.defcard.homair{border-top:3px solid var(--accent)}
+.flowbox{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px;border:1px dashed var(--line);border-radius:4px;font-size:13px;text-align:center}
+.flowbox .fb{padding:6px 12px;border-radius:4px;background:var(--paper2);border:1px solid var(--line);font-weight:700}
+.flowbox .split{display:flex;gap:10px}
+.flowbox .fb.insulin{border-color:#d97706}.flowbox .fb.cpeptide{border-color:#10b981}
+.rescard{border:1px solid var(--line);border-radius:4px;padding:12px 14px;background:var(--paper);font-size:13px;display:flex;flex-direction:column;gap:6px}
+.rescard .rp{font-family:var(--mono);font-weight:600;line-height:1.6}
+.rescard .rn{color:var(--fg3);font-size:12.5px}
+.formula{font-family:var(--mono);font-size:15px;font-weight:600;padding:12px 14px;border-radius:4px;background:var(--paper2);border:1px solid var(--line);text-align:center}
+.formula small{display:block;font-weight:400;font-size:11.5px;color:var(--fg3);margin-top:4px}
+.excard{display:flex;flex-direction:column;gap:4px;padding:10px 14px;border-radius:4px;background:var(--paper2);border:1px solid var(--line);font-size:13px;text-align:center}
+.excard b{color:var(--accent-fg)}
+
+/* ---------- misc widgets */
+.calc{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;font-size:13px}
+.calc input{padding:7px 10px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--fg);font:inherit;width:100%;min-width:0}
+.calc output{font-family:var(--mono);font-weight:600;min-width:80px}
+.calc .u{color:var(--fg3);font-family:var(--mono);font-size:12px}
+.searchline{display:flex;align-items:center;gap:8px}
+.searchline input{flex:1;padding:8px 12px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--fg);font:inherit;min-width:0}
+.compare td .ok{color:var(--good);font-weight:700}.compare td .no{color:var(--bad);font-weight:700;background:var(--warn-soft);padding:1px 5px;border-radius:4px}.compare td .sub{display:block;font-size:11px;color:var(--fg3);font-weight:400}
+.compare thead th.d1,.compare thead th.d2{color:var(--good)}.compare thead th.d3{color:var(--info)}.compare thead th.d4{color:var(--fg)}
+.lot-svg{width:100%;max-width:420px;display:block;border-radius:4px}
+.pathchip{display:inline-flex;gap:8px;align-items:center;padding:6px 12px;border-radius:99px;background:var(--paper2);border:1px solid var(--line);font-size:12.5px}
+.pathchip .lb{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--fg3);text-transform:uppercase}
+.endbox{padding:12px 14px;border-radius:4px;font-size:13px}
+.endbox.tech{background:var(--bad-soft)}.endbox.check{background:var(--warn-soft)}
+.devcell{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px;border:1px solid var(--line);border-radius:4px;background:var(--paper);transition:border-color .12s}
+.devcell:hover,.devcell.active{border-color:var(--accent)}.devcell.active{background:var(--accent-soft)}
+.devcell img{height:120px;object-fit:contain}
+.devcell b{font-size:14px}
+.devlayout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:16px;align-items:start}
+.devlayout .photo{display:flex;flex-direction:column;gap:10px;position:sticky;top:76px}
+.devlayout .photo img{border:1px solid var(--line);border-radius:4px;background:var(--paper);padding:8px}
+.devlayout .photo .btn{justify-content:center}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--fg2)}
+.legend .li{display:flex;align-items:center;gap:6px}.legend .li i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.lv-green{background:#22c55e}.lv-orange{background:#f97316}.lv-red{background:#ef4444}.lv-yellow{background:#eab308}
+.ibtn{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:4px;background:var(--paper);text-align:left;font-size:12.5px;font-weight:600}
+.ibtn:hover{border-color:var(--accent)}.ibtn.active{background:var(--accent-soft);border-color:var(--accent)}
+.ibtn i{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+.casecard{padding:10px 12px;border-radius:4px;background:var(--paper2);border:1px solid var(--line2);font-size:13px}
+.casecard .cn{font-family:var(--mono);font-size:10.5px;color:var(--fg3);letter-spacing:.1em}
+.casecard b{display:block;margin:2px 0 4px}
+.scriptbox{padding:12px 14px;border-radius:4px;background:var(--accent-soft);font-size:13.5px;line-height:1.7}
+.storagemap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.sbox{border-radius:4px;padding:14px;border:1px solid var(--line);background:var(--paper)}
+.sbox.cold{border-top:4px solid var(--cold)}.sbox.room{border-top:4px solid var(--room)}
+.sbox .temp{font-family:var(--mono);font-size:22px;font-weight:600}
+.sbox .en{font-size:11.5px;color:var(--fg3);font-family:var(--mono)}
+.freq{display:flex;flex-direction:column;gap:10px}
+.freq ul{list-style:none;padding:0;display:flex;flex-direction:column;gap:5px;font-size:13px}
+.freq li{display:flex;gap:8px}.freq li em{font-style:normal;font-family:var(--mono);color:var(--fg3);flex:0 0 16px}
+.unitpill{font-family:var(--mono);font-size:12px;font-weight:600;background:var(--paper2);border:1px solid var(--line);border-radius:4px;padding:1px 6px;display:inline-block}
+.unitpron{display:block;font-size:11px;color:var(--fg3)}
+.power{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--fg2)}
+.power .pi{display:flex;align-items:center;gap:8px}.power .pi img{width:34px;height:34px;object-fit:contain;border-radius:4px;border:1px solid var(--line);background:#fff}
+
+/* ---------- lightbox */
+#lightbox>.lb{position:fixed;inset:0;z-index:100;background:rgba(8,14,22,.82);display:flex;align-items:center;justify-content:center;padding:20px}
+.lb .lbcard{background:var(--paper);border-radius:4px;max-width:min(1200px,96vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;width:100%;box-shadow:none}
+.lb .lbhead{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-weight:700;font-size:13.5px}
+.lb .lbhead .tools{margin-left:auto;display:flex;gap:6px;align-items:center}
+.lb .lbhead .pct{font-family:var(--mono);font-size:12px;color:var(--fg3);min-width:44px;text-align:center}
+.lb .lbbody{position:relative;overflow:auto;flex:1;background:var(--paper2);display:grid;place-items:center;min-height:200px}
+.lb .lbbody img{max-width:100%;max-height:calc(92vh - 110px);object-fit:contain;transition:transform .12s;transform-origin:center;cursor:grab}
+.lb .nav{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:var(--paper);border:1px solid var(--line);font-size:20px;display:grid;place-items:center}
+.lb .nav.prev{left:10px}.lb .nav.next{right:10px}
+.lb .pagenum{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:12px;background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:2px 10px}
+.lb .lbhint{font-size:11.5px;color:var(--fg3);padding:8px 14px;border-top:1px solid var(--line)}
+.lb .x{width:32px;height:32px;border-radius:4px;border:1px solid var(--line);display:grid;place-items:center;font-size:18px}
+
+@media (max-width:1100px){.mcols,.branches,.storagemap{grid-template-columns:1fr}.grid3,.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.devlayout{grid-template-columns:1fr}.devlayout .photo{position:static;flex-direction:row;flex-wrap:wrap;align-items:center}.devlayout .photo img{width:180px}}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  .rail{position:fixed;left:0;top:0;bottom:0;width:min(300px,86vw);z-index:50;transform:translateX(-102%);transition:transform .18s;box-shadow:none}
+  .rail.open{transform:none}.backdrop.open{display:block}
+  .menubtn{display:grid}
+  .topbar{padding:8px 14px}.topbar .crumb{display:none}
+  .content{padding:16px 16px 48px}
+  .grid2,.grid3,.grid4,.case3,.hero,.callstart{grid-template-columns:1fr}
+  .calc{grid-template-columns:1fr auto;}
+  .choice,.miniwhy{margin-left:0}
+  .bubble .who{width:48px}
+  .mhead{grid-template-columns:1fr}
+  .search{max-width:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ===== PostHog-style desk overrides ===== */
+body{font-family:var(--ui);font-size:14px;color:var(--fg);background:var(--bg)}
+h1,h2,h3,.core,.pcard b,.mcard b,.hero h1{font-family:var(--font);letter-spacing:-.025em}
+.pagehead h1{font-size:24px;font-weight:800}
+.card-h h2{font-size:19px;font-weight:700}
+.card-h h3{font-size:15px;font-weight:600}
+a{color:var(--fg);text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
+a:hover{color:var(--accent-fg)}
+*{transition-property:color,background-color,border-color;transition-duration:.15s;transition-timing-function:ease}
+button:focus-visible,a:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+::selection{background:#f1a82c66}
+
+/* rail = file manager on the desk */
+.rail{background:transparent;border-right:1px solid var(--line);padding:14px 10px 28px}
+.brand .logo{background:none;width:auto;height:auto;padding:0;font-family:var(--font);font-weight:800;font-size:22px;letter-spacing:-.04em;
+  background-image:linear-gradient(90deg,#0143cb,#2b6ff4 24%,#d23401 47%,#ff651f 66%,#fba000 83%,#0143cb);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand b{font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:-.02em}
+.brand small{font-family:var(--ui);font-size:11px;color:var(--fg3)}
+.navgroup .gl{font-family:var(--ui);font-weight:600;font-size:11px;letter-spacing:.06em;color:var(--fg3);padding:12px 8px 4px}
+.navbtn{font-family:var(--ui);font-size:13px;font-weight:500;color:var(--fg2);padding:6px 8px;border-radius:4px;text-decoration:none}
+.navbtn:hover{background:var(--stone);color:var(--fg)}
+.navbtn.active{background:var(--paper);color:var(--fg);font-weight:600;box-shadow:inset 0 0 0 1px var(--line)}
+.navbtn.active .ic{color:var(--accent)}
+.navbtn .ic{width:16px;height:16px;flex-basis:16px}
+.navbtn small{font-family:var(--mono);font-size:11px;color:var(--fg4)}
+
+/* top bar sits on the desk */
+.topbar{background:color-mix(in srgb,var(--bg) 92%,transparent);border-bottom:1px solid var(--line);padding:9px 24px}
+.topbar .crumb{font-family:var(--ui);font-size:12.5px;font-weight:500;color:var(--fg2);letter-spacing:0}
+.search input{border-radius:4px;border-color:var(--line);background:var(--paper);font-family:var(--ui)}
+.search input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px var(--accent-soft)}
+.search .kbd{font-family:var(--mono);border-radius:4px;background:var(--paper2)}
+.sresults{border-radius:6px;box-shadow:var(--shadow);padding:4px}
+.sresults .sr{border-radius:4px}
+.sresults .sr:hover,.sresults .sr.focus{background:var(--stone)}
+.sresults .sg{font-family:var(--ui);font-weight:600;letter-spacing:.04em;text-transform:none;font-size:11.5px}
+.menubtn{border-radius:4px}
+
+/* the application window */
+.deskwrap{padding:20px 24px 48px;display:flex;justify-content:center}
+.window{width:100%;max-width:var(--page);background:var(--paper);border:1px solid var(--line);border-radius:6px;overflow:clip;display:flex;flex-direction:column;min-width:0}
+.titlebar{position:sticky;top:calc(env(safe-area-inset-top,0px) + 55px);z-index:10;height:36px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 12px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--paper) 85%,transparent);backdrop-filter:blur(8px)}
+.titlebar .tb-left{display:flex;align-items:center;gap:6px;font-family:var(--ui);font-size:12px;color:var(--fg3);min-width:0}
+.titlebar .tb-left .ic{width:14px;height:14px}
+.titlebar .fname{font-family:var(--ui);font-size:13px;font-weight:500;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw}
+.titlebar .dots{display:flex;gap:6px;justify-content:flex-end}
+.titlebar .dots i{width:10px;height:10px;border-radius:50%;border:1px solid var(--line);background:var(--paper2)}
+.content{padding:22px 32px 40px;max-width:none;gap:20px}
+.pagehead{padding-bottom:16px;border-bottom:1px solid var(--line2)}
+.pagehead .eyebrow,.eyebrow,.hero .kicker{font-family:var(--ui);font-weight:600;font-size:11.5px;letter-spacing:.04em;text-transform:none;color:var(--fg3)}
+.pagehead .eyebrow{color:var(--gold)}
+.pagehead .lead{font-size:14px;color:var(--fg2)}
+
+/* surfaces: flat, hairline, no depth */
+.card{border-radius:4px;border-color:var(--line);padding:16px}
+.card.soft,.sbox,.branch,.step,.spec .s,.case3 .cell,.casecard,.flowbox,.excard,.formula{background:var(--paper2);border-color:var(--line2)}
+.tblwrap{border-radius:4px;border-color:var(--line)}
+thead th{font-family:var(--ui);font-size:11.5px;letter-spacing:.02em;text-transform:none;color:var(--fg3);background:var(--paper2);font-weight:600}
+tbody th{background:var(--cream);color:var(--fg2)}
+th,td{border-bottom-color:var(--line2)}
+tr.clickable:hover td{background:var(--stone)}
+.spectable td.hl{background:#fbf0dc}
+
+/* buttons */
+.btn{font-family:var(--ui);font-weight:500;font-size:13px;border-radius:4px;border:1px solid var(--line);background:var(--paper2);color:var(--fg);padding:6px 12px;text-decoration:none}
+.btn:hover{background:var(--stone);border-color:var(--line);color:var(--fg)}
+.btn.primary{background:var(--amber);border-color:var(--amber);color:var(--fg)}
+.btn.primary:hover{background:var(--amber-dk);border-color:var(--amber-dk);color:var(--fg);opacity:1}
+.btn.accent{background:transparent;border:1.5px solid var(--gold);color:var(--gold)}
+.btn.accent:hover{background:#fbf0dc;color:var(--gold)}
+.btn.sm{padding:3px 8px;font-size:12px}
+.chip{border-radius:4px;font-family:var(--ui);font-weight:500;font-size:12.5px;background:var(--paper);border-color:var(--line);color:var(--fg2)}
+button.chip:hover{background:var(--stone);border-color:var(--line);color:var(--fg)}
+.chip.active,.choice .chip.active{background:var(--fg);border-color:var(--fg);color:var(--paper)}
+.chip.soft,.termchips .chip{background:var(--paper2);border-color:transparent;color:var(--fg2)}
+.pill{border-radius:9999px;font-family:var(--ui);font-weight:600;font-size:11.5px}
+.qbtn{border-radius:4px;font-family:var(--ui);font-weight:600;background:var(--paper)}
+.qbtn:hover{background:var(--paper2);border-color:var(--line);color:var(--fg)}
+.qbtn .ic{color:var(--gold)}
+.qbtn.active{border-color:var(--accent);background:var(--accent-soft)}
+.ibtn{border-radius:4px;font-family:var(--ui)}
+.ibtn:hover{background:var(--stone);border-color:var(--line)}
+.ibtn.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-fg)}
+
+/* tabs */
+.tabs{border-bottom:1px solid var(--line)}
+.tabs .tab{font-family:var(--ui);font-size:13px;font-weight:500;color:var(--fg3);padding:9px 12px;border-radius:6px 6px 0 0}
+.tabs .tab.active{background:var(--paper);color:var(--accent-fg);border-bottom:2px solid var(--accent)}
+.tabs.pills{border-bottom:1px solid var(--line);gap:2px;margin-bottom:14px}
+.tabs.pills .tab{border:0;border-radius:6px 6px 0 0;padding:8px 12px;margin-bottom:-1px;border-bottom:2px solid transparent}
+.tabs.pills .tab.active{background:var(--paper);color:var(--accent-fg);border-bottom-color:var(--accent)}
+
+/* callouts */
+.callout{border-radius:4px;background:var(--paper2);border-color:var(--line2)}
+.callout.warn{background:#fbf0dc;border-color:#ecd2a0}
+.callout.bad{background:#fde9df;border-color:#f3c4ab}
+.callout.info{background:var(--accent-soft);border-color:#c7dafa}
+.callout.good{background:#e8f1e2;border-color:#c5dcb8}
+.callout .cic{color:var(--fg2)}
+.callout.warn .cic{color:var(--gold)}.callout.bad .cic{color:var(--bad)}.callout.info .cic{color:var(--accent-fg)}.callout.good .cic{color:var(--good)}
+.miniwhy{border-left-color:var(--amber);background:var(--paper2)}
+.scriptbox{background:var(--cream);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:4px}
+.endbox{border-radius:4px;border:1px solid var(--line2)}
+
+/* conversation bubbles as printed notes */
+.bubble .who{font-family:var(--ui);font-weight:600;font-size:11px;letter-spacing:.02em;text-transform:none}
+.bubble .msg{border-radius:4px}
+.bubble.csc .msg{background:var(--accent-soft);border-color:#c7dafa}
+.bubble.answer .msg{background:#e8f1e2;border-color:#c5dcb8}
+.bubble.answer.warn .msg{background:#fbf0dc;border-color:#ecd2a0}
+.bubble.answer.tech .msg{background:#fde9df;border-color:#f3c4ab}
+
+/* home: panels as folders */
+.hero{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+.hero h1{font-size:30px;font-weight:800;line-height:1.25}
+.hero .card:first-child{background:var(--cream)}
+.pcard{border-radius:4px;background:var(--paper);min-height:108px;padding:12px 14px}
+.pcard:hover{transform:none;background:var(--paper2);border-color:var(--line)}
+.pcard .fold{width:22px;height:22px;color:var(--gold)}
+.pcard .pn{font-family:var(--mono);color:var(--fg4);position:absolute;top:12px;right:14px}
+.pcard .pen{font-family:var(--ui);font-weight:600;font-size:11px;letter-spacing:.06em;color:var(--fg3)}
+.pcard b{font-size:18px;font-weight:700}
+.mcard{border-radius:4px}
+.mcard:hover,.devcell:hover{background:var(--paper2);border-color:var(--line)}
+.mcard .go{color:var(--gold);font-family:var(--ui)}
+.devcell{border-radius:4px}
+.devcell.active{background:var(--accent-soft);border-color:var(--accent)}
+.core-label{color:var(--gold);font-family:var(--ui);font-weight:600;letter-spacing:0}
+.signal .sp{border-radius:9999px;background:var(--paper2);border-color:var(--line2);font-family:var(--ui)}
+
+/* semantic swatches from the four accents */
+.lv-green{background:var(--moss)}.lv-orange{background:var(--amber)}.lv-red{background:var(--flame)}.lv-yellow{background:var(--marigold)}
+.defcard.insulin{border-top-color:var(--amber)}.defcard.cpeptide{border-top-color:var(--moss)}.defcard.homair{border-top-color:var(--accent)}
+.flowbox .fb.insulin{border-color:var(--amber)}.flowbox .fb.cpeptide{border-color:var(--moss)}
+.sbox.cold{border-top:3px solid var(--accent)}.sbox.room{border-top:3px solid var(--flame)}
+.nstep .n{background:var(--fg);border-radius:4px;font-family:var(--mono)}
+.tbflow b{background:var(--fg)}
+.tbsteps .ts{border-radius:4px}
+.tbsteps .ts.focus{border-color:var(--accent);background:var(--accent-soft)}
+.tbsteps .ts.reset{border-color:var(--flame);background:#fde9df;color:var(--bad)}
+.branch.up .big{color:var(--bad)}.branch.down .big{color:var(--accent-fg)}
+.compare td .no{background:#fbf0dc;color:var(--bad)}
+.compare thead th.d1,.compare thead th.d2{color:var(--good)}.compare thead th.d3{color:var(--accent-fg)}
+ul.checks li::before{border-radius:3px;background-color:#e8f1e2;border-color:#b9d4a8}
+details.acc{border-radius:4px}
+details.acc summary{font-family:var(--ui);font-weight:600}
+details.acc summary:hover{background:var(--paper2)}
+.memo textarea,.memo input,.calc input,.searchline input{border-radius:4px;font-family:var(--ui);background:var(--cream)}
+.memo label{font-family:var(--ui);font-weight:600;letter-spacing:.02em;text-transform:none;font-size:11.5px}
+.unitpill,code{border-radius:4px;font-family:var(--mono)}
+.pathchip{border-radius:4px;background:var(--cream)}
+.pathchip .lb{font-family:var(--ui);font-weight:600;letter-spacing:.02em;text-transform:none}
+.figure img,.gallery img,.devlayout .photo img{border-radius:4px}
+.devlayout .photo{top:108px}
+.notice{border-top-color:var(--line2);font-family:var(--ui);font-size:12px}
+mark{background:#fbe3b6}
+.imglink{color:var(--gold)}
+
+/* lightbox keeps the one modal elevation */
+#lightbox>.lb{background:rgba(35,37,29,.55)}
+.lb .lbcard{border-radius:6px;border:1px solid var(--line);box-shadow:var(--shadow)}
+.lb .lbhead{height:40px;padding:0 12px;font-family:var(--ui);font-weight:500;font-size:13px;background:color-mix(in srgb,var(--paper) 85%,transparent);backdrop-filter:blur(8px)}
+.lb .lbbody{background:var(--paper2)}
+.lb .x,.lb .nav,.lb .pagenum{border-radius:4px}
+
+
+svg.cic{width:16px;height:16px;flex:0 0 16px;display:inline-block;vertical-align:-3px;color:var(--fg2)}
+details.acc summary svg.cic{color:var(--gold)}
+svg.ic{width:16px;height:16px;flex:0 0 16px;display:inline-block;vertical-align:-3px}
+.core-label svg.ic{width:15px;height:15px;flex-basis:15px;color:var(--gold)}
+.qbtn svg.ic{width:18px;height:18px;flex-basis:18px}
+.btn svg.ic{width:14px;height:14px;flex-basis:14px}
+.pcard svg.fold{width:22px;height:22px}
+.tblwrap table.spectable{min-width:980px}
+.spectable td{min-width:84px}
+.spectable td:first-child{min-width:120px}
+@media (max-width:820px){
+  .deskwrap{padding:12px 16px 40px}
+  .content{padding:16px 16px 32px}
+  .titlebar{top:calc(env(safe-area-inset-top,0px) + 55px)}
+  .titlebar .fname{max-width:60vw}
+  .rail{background:var(--bg)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ===== 수정 요청 ===== */
+.reqfab{position:fixed;right:20px;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);z-index:60;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:4px;background:var(--amber);color:var(--fg);font-family:var(--ui);font-weight:600;font-size:13px;border:1px solid var(--amber-dk)}
+.reqfab:hover{background:var(--amber-dk)}
+.reqfab .cnt{min-width:20px;height:20px;padding:0 6px;border-radius:9999px;background:var(--fg);color:var(--paper);font-family:var(--mono);font-size:11px;display:grid;place-items:center}
+.reqfab svg{width:16px;height:16px}
+.reqpanel{position:fixed;right:20px;bottom:calc(env(safe-area-inset-bottom,0px) + 72px);z-index:61;width:min(400px,calc(100vw - 32px));max-height:min(640px,calc(100dvh - 110px));display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);overflow:hidden}
+.reqpanel .rh{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border-bottom:1px solid var(--line);font-family:var(--ui);font-weight:500;font-size:13px;background:var(--paper2)}
+.reqpanel .rh .x{margin-left:auto;width:24px;height:24px;border-radius:4px;display:grid;place-items:center;font-size:16px}
+.reqpanel .rh .x:hover{background:var(--stone)}
+.reqpanel .rb{padding:14px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+.reqpanel .where{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:4px;background:var(--cream);border:1px solid var(--line2);font-size:12.5px}
+.reqpanel .where b{font-family:var(--mono);font-weight:500}
+.reqpanel .kinds{display:flex;flex-wrap:wrap;gap:6px}
+.reqpanel textarea{width:100%;min-height:96px;resize:vertical;font:inherit;font-size:13.5px;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--cream);color:var(--fg)}
+.reqpanel textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.reqpanel .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.reqpanel .hint{font-size:11.5px;color:var(--fg3)}
+.reqlist{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line2);padding-top:10px}
+.reqitem{padding:8px 10px;border:1px solid var(--line2);border-radius:4px;background:var(--paper2);font-size:12.5px;display:flex;flex-direction:column;gap:4px}
+.reqitem .meta{display:flex;align-items:center;gap:6px;color:var(--fg3);font-size:11.5px}
+.reqitem .meta .pill{font-size:10.5px;padding:1px 7px}
+.reqitem.done{opacity:.7}
+.reqitem .note{color:var(--good);font-size:12px}
+.reqitem .del{margin-left:auto;font-size:11.5px;color:var(--fg3);text-decoration:underline;text-underline-offset:2px}
+.reqpanel .tag-x{font-size:11.5px;color:var(--fg3)}
+@media (max-width:820px){.reqfab .lbl{display:none}.reqfab{padding:10px}}
+.totop{position:fixed;right:20px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);z-index:59;width:38px;height:38px;border-radius:4px;border:1px solid var(--line);background:var(--paper);color:var(--fg2);display:grid;place-items:center}
+.totop:hover{background:var(--stone);color:var(--fg)}
+.totop svg{width:18px;height:18px}
+.totop[hidden]{display:none}
+/* ===== page tabs ===== */
+.ptabs{display:flex;gap:4px;flex:0 0 auto}
+.ptab{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:4px;border:1px solid transparent;font-family:var(--ui);font-weight:600;font-size:13px;color:var(--fg2);white-space:nowrap}
+.ptab:hover{background:var(--stone);color:var(--fg)}
+.ptab.active{background:var(--paper);border-color:var(--line);color:var(--fg)}
+.ptab.active svg.ic{color:var(--accent)}
+.ptab svg.ic{width:15px;height:15px;flex-basis:15px}
+.topbar .crumb{margin-left:6px}
+.topbar .crumb{display:none}
+@media (max-width:820px){.topbar{flex-wrap:wrap}.ptabs{order:3;width:100%;overflow-x:auto}.ptab{flex:1;justify-content:center;padding:6px 8px;font-size:12.5px}.ptab svg.ic{display:none}}
+
+/* ===== 기기별 기본 정보 ===== */
+[id^="dga-"]{scroll-margin-top:104px}
+.dg-ul{display:flex;flex-direction:column;gap:6px;padding-left:1.2em;font-size:13.5px}
+td .dg-ul{font-size:13px;gap:3px}
+.dg-note{font-size:12.5px;color:var(--fg2);margin-top:4px}
+.dg-warn{font-size:12.5px;font-weight:600;color:var(--bad);margin-top:4px}
+.dg-sub{color:var(--fg3);font-weight:400;font-size:12px}
+.dg-cap{font-size:12px;color:var(--fg3);margin-top:4px}
+.dg-nb{min-width:0;font-size:13.5px;padding-top:3px}
+.gallery.dg-shots{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-top:8px;align-items:start}
+.dg-btnimg{display:block;height:34px;width:auto;margin-top:8px;border:1px solid var(--line2);border-radius:4px;background:var(--paper)}
+.dg-inimg{display:block;max-width:min(320px,100%);margin-top:8px;border:1px solid var(--line);border-radius:4px;cursor:zoom-in}
+.dg-part{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:16px;align-items:start}
+.dg-part.wide{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:center}
+.dg-part .figure{align-items:center}
+.dg-part .figure img{width:auto;max-width:100%}
+.dg-flow{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr) minmax(0,170px);gap:12px;align-items:center}
+.dg-flow .ar{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;font-weight:600;font-size:13px;color:var(--fg2)}
+.dg-flow .ar span{font-size:20px;line-height:1;color:var(--fg3)}
+.dg-kv dt{font-weight:600;color:var(--fg2)}
+table.dg-wide{min-width:920px}
+tr.dg-group th{white-space:normal;width:auto;background:var(--cream);color:var(--fg);font-weight:700}
+.dgerr td:first-child{min-width:210px}
+.dgerr.code td:first-child{min-width:0;white-space:nowrap}
+.dgerr thead th::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:var(--warn)}
+.dgerr thead th:nth-child(2)::before{background:var(--info)}
+.dgerr thead th:nth-child(3)::before{background:var(--good)}
+.dg-flash{outline:2px solid var(--amber);outline-offset:2px}
+tr.dg-flash td{background:var(--warn-soft)}
+.dg-chiprow{display:grid;grid-template-columns:56px minmax(0,1fr);gap:8px;align-items:start}
+.dg-chiprow .eyebrow{padding-top:5px}
+.dgref3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.dgref3 td.num{white-space:nowrap}
+.dgref3 th .dg-sub{display:block}
+.dgref3 td .dg-sub{margin-left:5px;white-space:nowrap}
+.chip .dg-sub{margin-left:5px}
+.gallery.dg-shots img{max-height:240px;object-fit:contain;background:var(--paper2)}
+.dg-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+table.dg-wide thead th{white-space:nowrap}
+.titlebar .tb-left span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.navbtn.off,.navbtn.off:hover{cursor:default;background:none;color:var(--fg4)}
+.devcell.off,.devcell.off:hover{cursor:default;background:var(--paper);border-color:var(--line)}
+.devcell.off img{opacity:.6}
+@media (max-width:1100px){.dgref3{grid-template-columns:1fr}}
+@media (max-width:820px){.dg-part,.dg-part.wide,.dg-flow{grid-template-columns:1fr}.dg-flow .ar span{transform:rotate(90deg)}.dg-chiprow{grid-template-columns:1fr;gap:4px}}
+
+body{height:auto;padding:16px}
+.rev{font-family:var(--mono);font-size:12px;color:var(--fg3);letter-spacing:.02em}
+#app{max-width:1120px;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:16px}
+
+/* ===== @jms 로고 · 창 틀 (Knowledge Base 디자인) ===== */
+.jms-mark{width:32px;height:32px;flex:none;display:inline-block}
+.jms-mark .ink{fill:#2B3050}.jms-mark .arch{fill:none;stroke:#2B3050}.jms-mark .dot{fill:#FF6A4D}
+.jms-foot{display:flex;align-items:center;justify-content:center;gap:8px;padding:18px 0 22px;color:#65675e;font-size:12.5px;font-weight:600;border-top:1px solid #e5e7e0}
+.jms-foot .jms-mark{width:18px;height:18px}
+.cdesk{padding:20px 24px 48px;display:flex;justify-content:center}
+.cwin{width:100%;background:#fff;border:1px solid #bfc1b7;border-radius:6px;overflow:clip;display:flex;flex-direction:column;min-width:0}
+.ctitle{position:sticky;top:env(safe-area-inset-top,0px);z-index:12;height:36px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #bfc1b7;background:color-mix(in srgb,#fff 88%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.ctitle .l{display:flex;align-items:center;gap:7px;font-size:12px;color:#65675e;min-width:0;white-space:nowrap}
+.ctitle .l .jms-mark{width:18px;height:18px}
+.ctitle .fname{font-size:13px;font-weight:500;color:#23251d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctitle .dots{display:flex;gap:6px;justify-content:flex-end}
+.ctitle .dots i{width:10px;height:10px;border-radius:50%;border:1px solid #bfc1b7;background:#eeefe9}
+.phead{display:flex;gap:12px;align-items:flex-start;min-width:0}
+.phead>.jms-mark{width:40px;height:40px;margin-top:2px}
+@media (max-width:820px){
+  .cdesk{padding:8px 8px 24px}
+  .ctitle{grid-template-columns:auto minmax(0,1fr);justify-items:start}
+  .ctitle .dots{display:none}
+  .phead>.jms-mark{width:34px;height:34px}
+}
+
+/* ===== Control · 창 틀 ===== */
+body{height:auto;padding:0}
+#app{max-width:none;margin:0;background:none;border:0;border-radius:0;padding:0;display:block}
+.cwin{max-width:1120px}
+.cbody{padding:22px 32px 28px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.ctll{display:none}
+.ctlfld{display:block;min-width:0}
+.callout>div{min-width:0;overflow-wrap:anywhere}
+
+/* ===== 모바일 · 태블릿 (1100px 이하) ===== */
+@media (max-width:1100px){
+  .ctlhead{display:none}
+  .cbody{padding:14px 12px 20px;gap:12px}
+  .pagehead h1{font-size:21px}
+  .pagehead .lead{font-size:13.5px}
+  .card{padding:14px 12px}
+  .ctlrow{position:relative;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 10px;padding:10px}
+  .ctlrow>.ctlac,.ctlrow>.ctlfld.full,.ctlrow>.ctlwarn{grid-column:1/-1}
+  .ctlrow>.ctlac{padding-right:46px}
+  .ctll{display:block;font-size:11.5px;font-weight:600;color:var(--fg3);margin-bottom:3px}
+  .ctlrow select,.ctlrow input{font-size:15px;padding:9px 10px}
+  .ctlrow .ctlx{position:absolute;top:28px;right:10px;width:38px;height:40px;background:var(--paper)}
+  .ctlres .spec{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ctlres .spec .s.tot{grid-row:span 1}
+  /* 컨트롤별 정보: 표 → 컨트롤 카드 */
+  .tblwrap:has(.ctltbl){overflow:visible;border:0;background:none}
+  table.ctltbl{min-width:0;display:block}
+  table.ctltbl thead{display:none}
+  table.ctltbl tbody.ctlgrp{display:block;border:1px solid var(--line);border-radius:4px;background:var(--paper);margin-bottom:8px;overflow:hidden}
+  table.ctltbl tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:4px 8px;padding:10px 12px;align-items:end}
+  table.ctltbl tr+tr{border-top:1px solid var(--line2)}
+  table.ctltbl th,table.ctltbl td{display:block;padding:0;border:0;background:none;white-space:normal;min-width:0}
+  table.ctltbl th.ctlname{grid-column:1/-1;font-size:14.5px;font-weight:700;color:var(--fg);background:none;white-space:normal;width:auto}
+  table.ctltbl th.ctlname+td{grid-column:1/2;align-self:center;color:var(--fg3);font-size:12.5px}
+  table.ctltbl th.ctlname+td+td{grid-column:2/-1;align-self:center}
+  table.ctltbl td.mname{grid-column:1/-1;min-width:0;white-space:normal;margin-top:6px}
+  table.ctltbl th.ctlname~td.mname{margin-top:6px;padding-top:8px;border-top:1px dashed var(--line2)}
+  table.ctltbl td.ctlgm{grid-column:1/-1;min-width:0}
+  table.ctltbl td.ctlgm::before{content:"General Mode ";font-size:11.5px;color:var(--fg3);font-family:var(--ui)}
+  table.ctltbl td.ctlgm+td,table.ctltbl td.ctlgm+td+td{background:var(--paper2);border:1px solid var(--line2);border-radius:4px;padding:5px 8px;font-weight:600}
+  table.ctltbl td.ctlgm+td::before{content:"개봉 후 냉장 (2~8℃)";display:block;font-size:11px;font-weight:500;color:var(--fg3)}
+  table.ctltbl td.ctlgm+td+td::before{content:"개봉 후 냉동 (-20℃)";display:block;font-size:11px;font-weight:500;color:var(--fg3)}
+  table.ctltbl td:last-child{align-self:end}
+  table.ctltbl tr.ctlalt{background:var(--cream)}
+}
+</style></head><body><div id="app"></div>
+<script>
+const KB={"panels":[{"id":"갑상선","markers":["TSH","FreeT4","T3"]},{"id":"심혈관","markers":["CK-MB","Tn-I Plus","D-Dimer","NT-proBNP","Myoglobin"]},{"id":"당뇨","markers":["HbA1c Neo","HbA1c","Insulin","C-peptide","Microalbumin"]},{"id":"염증","markers":["IL-6","PCT Plus","CRP","SAA"]},{"id":"감염","markers":["ROTA","Rota/Adeno","NORO","HBsAg","Anti-HBs","Anti-HCV","COVID-19 Ag"]},{"id":"여성건강","markers":["PRL","β-HCG Plus","Total ßhCG","AMH","LH","FSH"]},{"id":"호르몬","markers":["Testosterone","Cortisol","Vitamin D Neo","PTH"]},{"id":"암","markers":["PSA"]},{"id":"류마티스","markers":["Anti-CCP Plus"]},{"id":"기타","markers":["Ferritin","Infliximab","Total Anti-Infliximab","KL-6"]}],"markers":[{"id":"IL-6","name":"IL-6","aliases":["IL-6","인터루킨6"],"panel":"염증","spec":{"general":"100 uL"},"control":{"name":"Boditech IL-6 control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"1일 이내","fridge":"7일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"PCT Plus","name":"PCT Plus","aliases":["PCT Plus"],"panel":"염증","spec":{"general":"100 uL"},"control":{"name":"Boditech PCT Plus control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"1일 이내","fridge":"7일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"CRP","name":"CRP","aliases":["CRP"],"panel":"염증","spec":{"general":"100 uL"},"control":{"name":"Boditech CRP control","form":"액상","volume":"0.5 mL/vial*2","prep":"상온 20분 안정화","openBefore":"28일 이내(개봉 후)","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"ROTA","name":"ROTA","aliases":["ROTA"],"panel":"감염","spec":{"general":"4방울 (100 uL 이상)"},"control":{"name":"Boditech ROTA control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"14일 이내","fridge":"-","frozen":"-","sampleType":"Others"}},{"id":"Rota/Adeno","name":"Rota/Adeno","aliases":["Rota/Adeno"],"panel":"감염","spec":{"general":"-"},"control":{"name":"Boditech Rota/Adeno Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"14일 이내","fridge":"-","frozen":"-","sampleType":"Others"}},{"id":"NORO","name":"NORO","aliases":["NORO"],"panel":"감염","spec":{"general":"-"},"control":{"name":"Boditech NORO control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"14일 이내","fridge":"-","frozen":"-","sampleType":"Others"}},{"id":"HBsAg","name":"HBsAg","aliases":["HBsAg","B형간염항원"],"panel":"감염","spec":{"general":"150 uL"},"control":{"name":"Boditech HBsAg Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Anti-HBs","name":"Anti-HBs","aliases":["Anti-HBs"],"panel":"감염","spec":{"general":"100 uL"},"control":{"name":"Boditech Anti-HBs Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Anti-HCV","name":"Anti-HCV","aliases":["Anti-HCV"],"panel":"감염","spec":{"general":"100 uL"},"control":{"name":"Boditech Anti-HCV Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"14일 이내","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"COVID-19 Ag","name":"COVID-19 Ag","aliases":["COVID-19 Ag","코로나"],"panel":"감염","spec":{"general":"8방울  (약 200 uL)"},"control":{"name":"Boditech COVID-19 Ag Control","form":"동결건조","volume":"0.5 mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 0.5mL 후 30분 Roller Mixer","openBefore":"14일 이내","fridge":"-","frozen":"-","sampleType":"Others"}},{"id":"SAA","name":"SAA","aliases":["SAA"],"panel":"염증","spec":{"general":"150 uL"},"control":{"name":"Boditech SAA Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"21일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"CK-MB","name":"CK-MB","aliases":["CK-MB"],"panel":"심혈관","spec":{"general":"150 uL"},"control":{"name":"Boditech Cardiac Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Tn-I Plus","name":"Tn-I Plus","aliases":["Tn-I Plus","트로포닌"],"panel":"심혈관","spec":{"general":"100 uL"},"control":{"name":"Boditech Tn-I Plus Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"1일 이내","fridge":"7일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"D-Dimer","name":"D-Dimer","aliases":["D-Dimer","디다이머"],"panel":"심혈관","spec":{"general":"100 uL"},"control":{"name":"Boditech D-Dimer Control","form":"동결건조","volume":"0.5 mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 0.5mL 후 30분 Roller Mixer","openBefore":"1일 이내","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"NT-proBNP","name":"NT-proBNP","aliases":["NT-proBNP"],"panel":"심혈관","spec":{"general":"100 uL"},"control":{"name":"Boditech NT-proBNP Control (Cardiac Control도 사용 가능)","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"1일 이내","fridge":"7일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Myoglobin","name":"Myoglobin","aliases":["Myoglobin","마이오글로빈"],"panel":"심혈관","spec":{"general":"100 uL"},"control":{"name":"Boditech Cardiac Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"PSA","name":"PSA","aliases":["PSA"],"panel":"암","spec":{"general":"150 uL"},"control":{"name":"Boditech Tumor marker Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"1일 이내","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"HbA1c Neo","name":"HbA1c Neo","aliases":["HbA1c Neo","당화혈색소"],"panel":"당뇨","spec":{"general":"-"},"control":{"name":"Boditech HbA1c Control","form":"동결건조","volume":"0.5 mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 0.5mL 후 30분 Roller Mixer","openBefore":"7일 이내","fridge":"5주 이내 (-20℃ 보관 시)","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"HbA1c","name":"HbA1c","aliases":["HbA1c","당화혈색소"],"panel":"당뇨","spec":{"general":"-"},"control":{"name":"Boditech HbA1c Control","form":"동결건조","volume":"0.5 mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 0.5mL 후 30분 Roller Mixer","openBefore":"7일 이내","fridge":"5주 이내 (-20℃ 보관 시)","frozen":"-","sampleType":"WB"}},{"id":"Insulin","name":"Insulin","aliases":["Insulin","인슐린"],"panel":"당뇨","spec":{"general":"100 uL"},"control":{"name":"Boditech Insulin Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"1일 이내","fridge":"7일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"C-peptide","name":"C-peptide","aliases":["C-peptide","씨펩타이드"],"panel":"당뇨","spec":{"general":"150 uL"},"control":{"name":"Boditech C-peptide Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"1일 이내","fridge":"7일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Microalbumin","name":"Microalbumin","aliases":["Microalbumin","미세알부민뇨","MAU"],"panel":"당뇨","spec":{"general":"100 uL"},"control":{"name":"Boditech MAU Control","form":"액상","volume":"0.5 mL/vial","prep":"상온 20분 안정화","openBefore":"1개월 이내(개봉 후)","fridge":"-","frozen":"-","sampleType":"Others"}},{"id":"TSH","name":"TSH","aliases":["TSH","갑상선자극호르몬"],"panel":"갑상선","spec":{"general":"100 uL"},"control":{"name":"Boditech Hormone Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"21일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"T3","name":"T3","aliases":["T3","트리요오드티로닌"],"panel":"갑상선","spec":{"general":"150 uL"},"control":{"name":"Boditech Hormone Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"14일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"FreeT4","name":"Free T4","aliases":["Free T4","FT4","FreeT4","유리T4","프리티포"],"panel":"갑상선","spec":{"general":"100 uL"},"control":{"name":"Boditech FreeT4 Control","form":"동결건조","volume":"0.5 mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 0.5mL 후 30분 Roller Mixer","openBefore":"7일 이내","fridge":"1개월 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"PRL","name":"PRL","aliases":["PRL","프로락틴"],"panel":"여성건강","spec":{"general":"150 uL"},"control":{"name":"Boditech Hormone Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"21일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"β-HCG Plus","name":"β-HCG Plus","aliases":["β-HCG Plus","임신"],"panel":"여성건강","spec":{"general":"100 uL"},"control":{"name":"Boditech hCG Plus Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"21일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Total ßhCG","name":"Total ßhCG","aliases":["Total ßhCG"],"panel":"여성건강","spec":{"general":"100 uL"},"control":{"name":"Boditech Hormone Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"21일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"AMH","name":"AMH","aliases":["AMH","난소예비력"],"panel":"여성건강","spec":{"general":"100 uL"},"control":{"name":"Boditech AMH Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"1일 이내","fridge":"7일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"LH","name":"LH","aliases":["LH","황체형성호르몬"],"panel":"여성건강","spec":{"general":"150 uL"},"control":{"name":"Boditech Hormone Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"21일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"FSH","name":"FSH","aliases":["FSH","난포자극호르몬"],"panel":"여성건강","spec":{"general":"150 uL"},"control":{"name":"Boditech Hormone Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"21일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Testosterone","name":"Testosterone","aliases":["Testosterone","테스토스테론"],"panel":"호르몬","spec":{"general":"200 uL"},"control":{"name":"Boditech Hormone Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"14일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Cortisol","name":"Cortisol","aliases":["Cortisol","코르티솔"],"panel":"호르몬","spec":{"general":"100 uL"},"control":{"name":"Boditech Hormone Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"7일 이내","fridge":"21일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Vitamin D Neo","name":"Vitamin D Neo","aliases":["Vitamin D Neo"],"panel":"호르몬","spec":{"general":"100 uL"},"control":{"name":"Boditech Vitamin D Control","form":"동결건조","volume":"0.5 mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 0.5mL 후 30분 Roller Mixer","openBefore":"7일 이내","fridge":"21일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"PTH","name":"PTH","aliases":["PTH","부갑상선호르몬"],"panel":"호르몬","spec":{"general":"100 uL"},"control":{"name":"Boditech PTH Control","form":"동결건조","volume":"0.5 mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 0.5mL 후 30분 Roller Mixer","openBefore":"1일 이내","fridge":"21일 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Anti-CCP Plus","name":"Anti-CCP Plus","aliases":["Anti-CCP Plus"],"panel":"류마티스","spec":{"general":"100 uL"},"control":{"name":"Boditech Anti-CCP Plus Control","form":"동결건조","volume":"0.5 mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 0.5mL 후 30분 Roller Mixer","openBefore":"7일 이내","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Ferritin","name":"Ferritin","aliases":["Ferritin"],"panel":"기타","spec":{"general":"100 uL"},"control":{"name":"Boditech Ferritin Control","form":"동결건조","volume":"0.5 mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 0.5mL 후 30분 Roller Mixer","openBefore":"7일 이내","fridge":"1개월 이내","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Infliximab","name":"Infliximab","aliases":["Infliximab"],"panel":"기타","spec":{"general":"100 uL"},"control":{"name":"Boditech Infliximab Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"3주","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"Total Anti-Infliximab","name":"Total Anti-Infliximab","aliases":["Total Anti-Infliximab"],"panel":"기타","spec":{"general":"100 uL"},"control":{"name":"Boditech Total Anti-infliximab Control","form":"동결건조","volume":"1mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 1mL 후 30분간 Roller Mixer","openBefore":"3주","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}},{"id":"KL-6","name":"KL-6","aliases":["KL-6"],"panel":"기타","spec":{"general":"100 uL"},"control":{"name":"Boditech KL-6 Control","form":"동결건조","volume":"0.5 mL/vial*2","prep":"상온 20분 안정화 → 컨트롤 + DW 0.5mL 후 30분 Roller Mixer","openBefore":"7일 이내","fridge":"-","frozen":"-","sampleType":"Serum/Plasma"}}],"guides":{"controlNote":"컨트롤 검사 시 샘플타입은 <b>Serum/Plasma</b>로 선택합니다.<br>예외 : HbA1c → WB, Rota/Noro/RotaAdeno/Microalbumin/COVID-19 Ag → Others"},"meta":{"built":"2026-09-29"}}
+;
+const ICON = {
+  folder:'<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
+  home:'<path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  panel:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 20V10"/>',
+  drop:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+  vol:'<path d="M6 3h12M9 3v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V3"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  why:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01"/>',
+  tube:'<path d="M9 3h6M10 3v9l-4 7a2 2 0 0 0 2 3h8a2 2 0 0 0 2-3l-4-7V3"/>',
+  ctrl:'<path d="M8 3h8v5l3 8a3 3 0 0 1-3 4H8a3 3 0 0 1-3-4l3-8z"/>',
+  temp:'<path d="M10 4a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/>',
+  tip:'<path d="M12 3v5M9 8h6l-1 12h-4z"/>',
+  box:'<path d="M3 8l9-4 9 4v9l-9 4-9-4zM3 8l9 4 9-4M12 12v9"/>',
+  wash:'<path d="M4 7h16M6 7l1.5 12h9L18 7M9 7V4h6v3"/>',
+  save:'<path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/>',
+  book:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M6 17h13"/>',
+  device:'<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  warn:'<path d="M12 4 21 19.5H3z"/><path d="M12 10v4M12 17h.01"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>',
+  bar:'<path d="M4 5v14M8 5v14M12 5v14M15 5v14M20 5v14"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  calc:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h2M12 12h2M16 12h.01M8 16h2M12 16h2M16 16h.01"/>',
+  chat:'<path d="M4 5h16v11H9l-5 4z"/>',
+  phone:'<path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.2 11 11 0 0 0 3.6.6 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.4a1 1 0 0 1 1 1 11 11 0 0 0 .6 3.6 1 1 0 0 1-.2 1z"/>',
+  link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  net:'<circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v5M12 12l-5 5M12 12l5 5"/>',
+  check:'<path d="M9 12l2 2 4-5"/><rect x="3" y="3" width="18" height="18" rx="3"/>',
+  abbr:'<path d="M4 7V5h16v2M12 5v14M8 19h8"/>',
+  pattern:'<path d="M4 17l5-6 4 3 7-8"/><path d="M4 21h16"/>',
+  pill:'<rect x="3" y="9" width="18" height="6" rx="3"/><path d="M12 9v6"/>',
+};
+const $ =(s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MK = Object.fromEntries(KB.markers.map(m => [m.id, m]));
+const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const ic = (n, cls='ic') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]||ICON.list}</svg>`;
+const store = {get(k,d=''){ try{ const v=localStorage.getItem('csc:'+k); return v==null?d:v; }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem('csc:'+k,v); }catch(e){} }};
+const INIT = {};
+const callout = (kind, html, icon='alert') => `<div class="callout ${kind}">${ic(icon,'cic')}<div>${html}</div></div>`;
+const pagehead = (eyebrow, title, lead='', acts='') => `<div class="pagehead"><div class="phead"><svg class="jms-mark" viewBox="0 0 120 120" role="img" aria-label="@jms"><rect class="ink" x="12" y="52" width="46" height="46" rx="20"/><path class="arch" d="M64 98 C72 72 77 52 84 52 C91 52 96 72 104 98" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle class="dot" cx="60" cy="26" r="13"/></svg><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1>${lead?`<p class="lead">${lead}</p>`:''}<div class="rev" style="margin-top:6px">기술영업팀_Rev.01_261014</div></div></div></div>`;
+const notice = () => `<div class="notice"><span><b>사용 목적</b> · 업무 참고용입니다. 원본: csc-guide-m · 정리일 ${KB.meta.built}</span></div>`;
+
+/* ---------- Control 계산기 · 출고 vial 계산 (10/08, 문제 해결 탭 #t-control) */
+/* 컨트롤은 General Mode만 사용. 컨트롤 1개 = Level 1 · Level 2 각 1 vial이므로 출고 vial = 레벨당 필요 vial.
+   data.js 칸 대응(사용자 확인 10/08): control.openBefore → 개봉 후 냉장, control.fridge → 개봉 후 냉동 (control.frozen은 전부 '-')
+   대체 컨트롤: 컨트롤 이름이 "X (Y Control도 사용 가능)"이면 X와 Y 둘 다에 표시하고 계산 때 고를 수 있게 함 (현재 NT-proBNP → Cardiac Control) */
+function ctlUl(s){ const m = /(\d+(?:\.\d+)?)\s*u\s*L/i.exec(String(s||'')); return m ? parseFloat(m[1]) : null; }
+function ctlVial(s){ const m = /(\d+(?:\.\d+)?)\s*mL/i.exec(String(s||'')); return m ? {ul: Math.round(parseFloat(m[1])*1000), ml: parseFloat(m[1])} : null; }
+const ctlVolTxt = s => { const v = ctlVial(s); return v ? `${v.ml} mL` : String(s||''); };
+const ctlVolPill = s => { const v = ctlVial(s); return `<span class="pill ${v && v.ml === 1 ? 'info' : v && v.ml === 0.5 ? 'warn' : 'gray'} num">${esc(ctlVolTxt(s))}</span>`; };
+const ctlGm = (s, two) => { const t = esc(String(s||'').replace(/\s+/g,' ').trim()); return two ? t.replace(/\s*\(/, '<br>(') : t; };
+const ctlBase = n => String(n).replace(/\s*\(.*?도 사용 가능\)\s*$/, '').trim();
+/* 계산 주의(사용자 요청 10/08): 원본 General Mode 값과 실제 계산에 쓰는 값이 다른 항목. data.js 값은 그대로 두고 계산에만 ul을 바꿔 씀 */
+const CTL_CAUTION = {FreeT4:{ul:100, text:'설명서에는 200ul로 되어 있으나 실제 사용량이 적어 100ul로 계산됨'}};
+function ctlModes(m){
+  const out = [];
+  const cc = CTL_CAUTION[m.id];
+  if(ctlUl(m.spec.general) != null) out.push({k:'general', label:`General Mode · ${m.spec.general.replace(/\s+/g,' ')}`, ul:cc ? cc.ul : ctlUl(m.spec.general), raw:m.spec.general, cc});
+  out.push({k:'manual', label: out.length ? '직접 입력 (µL)' : 'General Mode 정보 없음 · 직접 입력', ul:null});
+  return out;
+}
+const ctlClean = v => String(v ?? '').replace(/\s*\(\s*개봉\s*후\s*\)/g, '').replace(/\s*\(\s*-20\s*℃\s*보관\s*시\s*\)/g, '').replace(/\s*이내/g, '').trim() || '-';
+const ctlFridge = c => ctlClean(c.openBefore), ctlFreeze = c => ctlClean(c.fridge);
+let CTLG = null;
+function ctlGroups(){
+  if(CTLG) return CTLG;
+  const g = new Map();
+  KB.panels.forEach(p => p.markers.forEach(id => { const m = MK[id], n = ctlBase(m.control.name); if(!g.has(n)) g.set(n, {name:n, c:m.control, items:[]}); g.get(n).items.push({m, alt:false}); }));
+  const alts = {};
+  KB.markers.forEach(m => { const a = /\((.+?)도 사용 가능\)\s*$/.exec(m.control.name); if(!a) return; const tg = [...g.values()].find(x => x.name.endsWith(a[1].trim())); if(tg){ tg.items.push({m, alt:true, from:ctlBase(m.control.name)}); (alts[m.id] ||= []).push(tg.name); } });
+  CTLG = {list:[...g.values()], by:Object.fromEntries([...g.values()].map(x => [x.name, x])), alts};
+  return CTLG;
+}
+const ctlOpts = m => [ctlBase(m.control.name), ...(ctlGroups().alts[m.id] || [])];
+const ctlOwnVals = (g, f) => [...new Set(g.items.filter(x => !x.alt).map(x => f(x.m.control)))].join(' / ');
+const CTL = {rows:null};
+function ctlLoad(){ try{ const v = JSON.parse(store.get('ctl-calc','')); if(Array.isArray(v) && v.length) return v.filter(r => r && typeof r === 'object').slice(0,20).map(r => r.mode === 'ctip' ? {...r, mode:''} : r); }catch(e){} return [{m:'', ctl:'', mode:'', ul:'', n:''}]; }
+function ctlSave(){ store.set('ctl-calc', JSON.stringify(CTL.rows)); }
+function viewControl(){
+  const G = ctlGroups(); const groups = G.list;
+  const nItems = KB.markers.length;
+  return `${pagehead('CSC · 계산기', 'Control 계산기', '컨트롤별 용량 · 보관 기간과 검사 항목별 General Mode 검체량을 보고, 검사 횟수로 출고 vial을 계산합니다. 컨트롤은 General Mode만 사용합니다.')}
+  ${callout('info', KB.guides.controlNote, 'ctrl')}
+  <div class="card stack" style="gap:12px">
+    <div class="card-h" style="margin:0"><h2>출고 vial 계산</h2><span class="sub">검사 항목과 레벨당 검사 횟수를 넣으면 컨트롤별 출고 vial이 나옵니다 · 같은 컨트롤을 쓰는 항목은 합쳐서 계산</span><div class="right"><button class="btn sm" data-ctlclear="1">모두 지우기</button></div></div>
+    <div class="ctlhead"><span>검사 항목 (입력해서 찾기)</span><span>컨트롤</span><span>검체량</span><span>µL</span><span>레벨당 검사 횟수</span><span></span></div>
+    <div class="ctlrows" id="ctlrows"></div>
+    <div><button class="btn" data-ctladd="1">+ 항목 추가</button></div>
+    <div id="ctlres" class="stack" style="gap:10px"></div>
+    <p class="ctlnote">계산식 · 레벨당 필요량 = Σ(검사 횟수 × General Mode 검체량) → 출고 vial = 필요량 ÷ vial 용량(올림). 컨트롤 1개에 Level 1 · Level 2가 각 1 vial씩 들어 있으므로 레벨 수를 곱하지 않습니다. 다른 컨트롤도 쓸 수 있는 항목(NT-proBNP → Cardiac Control)은 “컨트롤” 칸에서 고르면 그 컨트롤로 합쳐서 계산합니다. 재검이나 분주 때 남는 손실량은 넣지 않았습니다. 입력값은 이 브라우저에만 저장됩니다.</p>
+  </div>
+  <div class="card stack" style="gap:10px">
+    <div class="card-h" style="margin:0"><h2>컨트롤별 정보</h2><span class="sub">컨트롤 ${groups.length}종 · 검사 항목 ${nItems}개 · 용량은 vial 1개 기준(Level 1 · Level 2 각 1 vial) ${ctlVolPill('1mL')} ${ctlVolPill('0.5mL')} · “+ 계산”을 누르면 위 계산에 추가</span></div>
+    ${callout('warn', Object.entries(CTL_CAUTION).map(([id, c]) => `<b class="t">${esc(MK[id].name)}</b>${esc(c.text)}`).join('<br>'), 'warn')}
+    <div class="searchline"><input id="ctlq" type="search" placeholder="컨트롤 이름 · 검사 항목 검색 (예: Hormone, TSH, Cardiac)" autocomplete="off"><span class="pill gray" id="ctlcount">${groups.length}종</span></div>
+    <div class="tblwrap"><table class="ctltbl"><thead><tr><th>컨트롤</th><th>형태</th><th>용량</th><th>검사 항목</th><th>General Mode</th><th>개봉 후 냉장<br>(2~8℃)</th><th>개봉 후 냉동<br>(-20℃)</th><th></th></tr></thead>
+      ${groups.map(g => { const c = g.c, n = g.items.length; return `<tbody class="ctlgrp" data-key="${esc([g.name, ...g.items.flatMap(x => [x.m.name, ...x.m.aliases])].join(' ').toLowerCase())}">${g.items.map((x, i) => { const m = x.m;
+        const st = f => x.alt ? `${esc(ctlOwnVals(g, f))}<span class="ctlsub">${esc(g.name.replace(/^Boditech\s+/,''))} 기준</span>` : esc(f(m.control));
+        return `<tr${x.alt?' class="ctlalt"':''}>${i ? '' : `<th rowspan="${n}" class="ctlname">${esc(g.name)}</th><td rowspan="${n}">${esc(c.form)}</td><td rowspan="${n}">${ctlVolPill(c.volume)}</td>`}<td class="mname">${esc(m.name)}${x.alt ? `<span class="pill gray ctlaltpill">대체 사용 가능</span><span class="ctlsub">전용: ${esc(x.from)}</span>` : (G.alts[m.id] ? `<span class="ctlsub">${esc(G.alts[m.id].join(', '))}도 사용 가능</span>` : '')}</td><td class="num ctlgm"><b>${ctlGm(m.spec.general, true)}</b>${CTL_CAUTION[m.id] ? ` <span class="pill warn" title="${esc(CTL_CAUTION[m.id].text)}">주의</span>` : ''}</td><td>${st(ctlFridge)}</td><td>${st(ctlFreeze)}</td><td><button class="btn sm" data-ctlpick="${esc(m.id)}" data-ctlpickc="${esc(g.name)}" title="${esc(m.name)} · ${esc(g.name)}로 계산에 추가">+ 계산</button></td></tr>`; }).join('')}</tbody>`; }).join('')}
+    </table></div>
+    <div class="callout" id="ctlempty" hidden>${ic('why','cic')}<div>검색 결과가 없습니다.</div></div>
+  </div>
+  ${notice()}<div data-init="ctl"></div>`;
+}
+INIT.ctl = () => { CTL.rows = ctlLoad(); ctlRenderRows(); ctlCalc(); };
+/* 검사 항목 입력: 이름(또는 영문 별칭 · 한글 입력이면 한글 별칭)이 입력한 글자로 "시작"하는 항목만 아래 목록에 표시 */
+const ctlNorm = s => String(s||'').toLowerCase().replace(/[βß]/g,'b').replace(/[\s\-_·()/.,]/g,'');
+const ctlHangul = s => /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(s);
+function ctlMatch(q){
+  const qn = ctlNorm(q); const ko = ctlHangul(q); const out = [];
+  KB.panels.forEach(p => p.markers.forEach(id => { const m = MK[id];
+    if(!qn){ out.push({m, via:''}); return; }
+    if(ctlNorm(m.name).startsWith(qn)){ out.push({m, via:''}); return; }
+    const a = m.aliases.find(x => x !== m.name && ctlHangul(x) === ko && ctlNorm(x).startsWith(qn));
+    if(a) out.push({m, via:a});
+  }));
+  return qn ? out.sort((x, y) => x.m.name.localeCompare(y.m.name, 'en', {sensitivity:'base'})) : out;
+}
+function ctlRowHtml(r, i){
+  const m = MK[r.m]; const modes = m ? ctlModes(m) : []; const cs = m ? ctlOpts(m) : [];
+  if(m && !modes.some(x => x.k === r.mode)) r.mode = modes[0].k;
+  if(m && !cs.includes(r.ctl)) r.ctl = cs[0];
+  const md = modes.find(x => x.k === r.mode);
+  const ulv = md && md.k !== 'manual' ? md.ul : r.ul;
+  const qv = m ? m.name : (r.q || '');
+  return `<div class="ctlrow" data-ctli="${i}">
+      <div class="ctlac"><span class="ctll">검사 항목</span><input data-ctlf="q" type="text" value="${esc(qv)}" placeholder="검사 항목 입력 (예: in, tsh)" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-label="검사 항목"${m?' class="ok"':''}><div class="ctlac-list" role="listbox" hidden></div></div>
+      <label class="ctlfld full"><span class="ctll">컨트롤</span><select data-ctlf="ctl" aria-label="컨트롤"${cs.length > 1 ? '' : ' disabled'}>${m ? cs.map(c => `<option value="${esc(c)}"${c===r.ctl?' selected':''}>${esc(c.replace(/^Boditech\s+/,''))}${cs.length > 1 && c !== cs[0] ? ' (대체)' : ''}</option>`).join('') : '<option>-</option>'}</select></label>
+      <label class="ctlfld full"><span class="ctll">검체량</span><select data-ctlf="mode" aria-label="검체량"${m?'':' disabled'}>${m ? modes.map(x => `<option value="${x.k}"${x.k===r.mode?' selected':''}>${esc(x.label)}</option>`).join('') : '<option>항목을 먼저 선택</option>'}</select></label>
+      <label class="ctlfld"><span class="ctll">µL</span><input data-ctlf="ul" type="number" inputmode="decimal" min="0" placeholder="µL" aria-label="검체량 µL" value="${ulv==null?'':esc(ulv)}"${md && md.k==='manual' ? '' : ' disabled'}></label>
+      <label class="ctlfld"><span class="ctll">레벨당 검사 횟수</span><div class="ctln"><input data-ctlf="n" type="number" inputmode="numeric" min="0" step="1" placeholder="횟수" aria-label="레벨당 검사 횟수" value="${esc(r.n)}"><span>회</span></div></label>
+      <button class="ctlx" data-ctldel="${i}" aria-label="이 줄 삭제" title="이 줄 삭제">×</button>
+      ${m && CTL_CAUTION[m.id] ? `<div class="ctlwarn">${ic('warn','cic')}<span>${esc(m.name)}: ${esc(CTL_CAUTION[m.id].text)}</span></div>` : ''}
+    </div>`;
+}
+function ctlRenderRows(){
+  const box = $('#ctlrows'); if(!box) return;
+  box.innerHTML = CTL.rows.map(ctlRowHtml).join('');
+}
+function ctlRenderRow(i){
+  const el = $(`#ctlrows [data-ctli="${i}"]`); if(!el) return ctlRenderRows();
+  const t = document.createElement('div'); t.innerHTML = ctlRowHtml(CTL.rows[i], i); el.replaceWith(t.firstElementChild);
+}
+function ctlAcShow(inp, act){
+  const list = inp.parentElement.querySelector('.ctlac-list'); if(!list) return;
+  const res = ctlMatch(inp.value);
+  const a = Math.max(0, Math.min(act ?? 0, res.length - 1));
+  list.innerHTML = res.length ? res.map((x, k) => `<div class="ctlac-opt${k===a?' act':''}" role="option" data-acid="${esc(x.m.id)}" aria-selected="${k===a}"><b>${esc(x.m.name)}</b>${x.via ? `<span class="via">${esc(x.via)}</span>` : ''}<small>${esc(x.m.panel)}</small></div>`).join('') : `<div class="ctlac-none">“${esc(inp.value)}”(으)로 시작하는 항목이 없습니다</div>`;
+  list.dataset.act = res.length ? a : -1; list.hidden = false; inp.setAttribute('aria-expanded', 'true');
+  const ae = list.querySelector('.act'); if(ae) ae.scrollIntoView({block:'nearest'});
+}
+function ctlAcHide(inp){ const list = inp && inp.parentElement.querySelector('.ctlac-list'); if(list){ list.hidden = true; list.innerHTML = ''; } if(inp) inp.setAttribute('aria-expanded', 'false'); }
+function ctlAcPick(i, id){
+  const r = CTL.rows[i]; if(!r) return;
+  if(r.m !== id){ r.m = id; r.q = MK[id].name; r.mode = ''; r.ul = ''; if(!ctlOpts(MK[id]).includes(r.ctl)) r.ctl = ''; }
+  ctlRenderRow(i); ctlSave(); ctlCalc();
+  const n = $(`#ctlrows [data-ctli="${i}"] [data-ctlf="n"]`); if(n) n.focus({preventScroll:true});
+}
+document.addEventListener('focusin', e => { if(e.target.matches && e.target.matches('#ctlrows [data-ctlf="q"]')){ e.target.select(); ctlAcShow(e.target); } });
+document.addEventListener('focusout', e => {
+  const inp = e.target; if(!(inp.matches && inp.matches('#ctlrows [data-ctlf="q"]'))) return;
+  const row = inp.closest('[data-ctli]'); const i = row ? +row.dataset.ctli : -1; const r = CTL.rows && CTL.rows[i];
+  ctlAcHide(inp);
+  if(!r || r.m) return;
+  const exact = KB.markers.find(m => ctlNorm(m.name) === ctlNorm(inp.value) || m.aliases.some(a => ctlNorm(a) === ctlNorm(inp.value)));
+  if(exact && inp.value.trim()) ctlAcPick(i, exact.id);
+});
+document.addEventListener('mousedown', e => { const o = e.target.closest('.ctlac-opt, .ctlac-none'); if(o) e.preventDefault(); });
+document.addEventListener('click', e => { const o = e.target.closest('.ctlac-opt'); if(!o) return; const row = o.closest('[data-ctli]'); if(row) ctlAcPick(+row.dataset.ctli, o.dataset.acid); });
+document.addEventListener('keydown', e => {
+  const inp = e.target; if(!(inp.matches && inp.matches('#ctlrows [data-ctlf="q"]'))) return;
+  const list = inp.parentElement.querySelector('.ctlac-list'); const act = list ? +list.dataset.act : -1;
+  const opts = list ? list.querySelectorAll('.ctlac-opt') : [];
+  if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); if(list.hidden) return ctlAcShow(inp, 0); if(!opts.length) return; ctlAcShow(inp, (act + (e.key === 'ArrowDown' ? 1 : -1) + opts.length) % opts.length); }
+  else if(e.key === 'Enter'){ if(!list.hidden && opts.length && act >= 0){ e.preventDefault(); ctlAcPick(+inp.closest('[data-ctli]').dataset.ctli, opts[act].dataset.acid); } }
+  else if(e.key === 'Escape'){ ctlAcHide(inp); }
+});
+function ctlCalc(){
+  const res = $('#ctlres'); if(!res) return;
+  const G = ctlGroups(); const groups = {}; const skipped = [];
+  CTL.rows.forEach(r => {
+    const m = MK[r.m]; const n = Math.floor(+r.n); if(!m || !(n > 0)) return;
+    const md = ctlModes(m).find(x => x.k === r.mode) || ctlModes(m)[0];
+    const ul = md.k === 'manual' ? parseFloat(r.ul) : md.ul;
+    if(!(ul > 0)){ skipped.push(`${m.name}: 검체량이 비어 있습니다${ctlUl(m.spec.general) == null ? ' (원본에 General Mode 값이 없음 · 직접 입력 필요)' : ''}`); return; }
+    const cn = ctlOpts(m).includes(r.ctl) ? r.ctl : ctlOpts(m)[0]; const grp = G.by[cn];
+    const vial = ctlVial(grp.c.volume);
+    if(!vial){ skipped.push(`${m.name}: 컨트롤 용량(${grp.c.volume})을 읽지 못했습니다`); return; }
+    const g = groups[cn] ||= {grp, vial, items:[]};
+    g.items.push({m, n, ul, md, alt: cn !== ctlOpts(m)[0]});
+  });
+  const list = Object.values(groups);
+  if(!list.length){ res.innerHTML = (skipped.length ? callout('warn', skipped.map(esc).join('<br>'), 'warn') : '') + `<div class="callout">${ic('calc','cic')}<div>검사 항목과 레벨당 검사 횟수를 넣으면 결과가 나옵니다.</div></div>`; return; }
+  const fmt = x => (Math.round(x*100)/100).toLocaleString('ko-KR');
+  res.innerHTML = list.map(g => {
+    const need = g.items.reduce((s, x) => s + x.n * x.ul, 0);
+    const vials = Math.ceil(need / g.vial.ul - 1e-9);
+    const left = vials * g.vial.ul - need;
+    const one = g.items.length === 1 ? Math.floor(g.vial.ul / g.items[0].ul + 1e-9) : null;
+    const own = g.items.filter(x => !x.alt);
+    const sv = f => own.length ? [...new Set(own.map(x => f(x.m.control)))].join(' / ') : ctlOwnVals(g.grp, f);
+    const approx = g.items.filter(x => x.md.k !== 'manual' && !x.md.cc && /이상|약/.test(x.md.raw)).map(x => `${x.m.name}: 원본 표기 “${x.md.raw.replace(/\s+/g,' ')}” → ${x.ul} µL로 계산`);
+    const caut = g.items.filter(x => x.md.cc).map(x => `${x.m.name}: ${x.md.cc.text}`);
+    return `<div class="card soft ctlres stack" style="gap:10px">
+      <div class="card-h" style="margin:0"><h3>${esc(g.grp.name)}</h3>${ctlVolPill(g.grp.c.volume)}<span class="sub">${esc(g.grp.c.form)} · Level 1 · Level 2 각 1 vial</span></div>
+      <div class="spec">
+        <div class="s"><small>레벨당 필요량</small><b>${fmt(need)} µL</b></div>
+        <div class="s"><small>vial 1개 용량</small><b>${fmt(g.vial.ul)} µL</b></div>
+        <div class="s tot"><small>출고 vial</small><b class="big">${vials}</b></div>
+        <div class="s"><small>레벨당 남는 양</small><b>${fmt(left)} µL</b></div>
+        ${one != null ? `<div class="s"><small>vial 1개로 가능 횟수</small><b>${one}회</b></div>` : ''}
+      </div>
+      <div class="ctlnote">${g.items.map(x => `${esc(x.m.name)}${x.alt ? '(대체)' : ''} ${x.n}회 × ${fmt(x.ul)} µL = ${fmt(x.n*x.ul)} µL`).join(' · ')}</div>
+      ${approx.length ? `<div class="ctlnote">${approx.map(esc).join('<br>')}</div>` : ''}
+      ${caut.length ? callout('warn', caut.map(esc).join('<br>'), 'warn') : ''}
+      <div class="ctlnote">보관 기간 · 개봉 후 냉장(2~8℃) ${esc(sv(ctlFridge))} · 개봉 후 냉동(-20℃) ${esc(sv(ctlFreeze))} — 검사일이 나뉘어 이 기간을 넘기면 남은 양을 쓸 수 없어 vial이 더 필요할 수 있습니다.</div>
+    </div>`;
+  }).join('') + (skipped.length ? callout('warn', skipped.map(esc).join('<br>'), 'warn') : '');
+}
+function ctlFilter(){
+  const q = ($('#ctlq')?.value || '').trim().toLowerCase(); let n = 0;
+  $$('.ctltbl .ctlgrp').forEach(r => { r.hidden = !!q && !r.dataset.key.includes(q); if(!r.hidden) n++; });
+  const c = $('#ctlcount'); if(c) c.textContent = n + '종'; const e = $('#ctlempty'); if(e) e.hidden = n > 0;
+}
+document.addEventListener('input', e => {
+  if(e.target.id === 'ctlq'){ ctlFilter(); return; }
+  const row = e.target.closest('[data-ctli]'); if(!row || !CTL.rows) return;
+  const r = CTL.rows[+row.dataset.ctli]; const f = e.target.dataset.ctlf; if(!r || !f) return;
+  if(f === 'q'){ r.q = e.target.value; e.target.classList.remove('ok'); if(r.m){ r.m = ''; r.mode = ''; r.ul = ''; r.ctl = ''; ctlSave(); ctlCalc(); const row2 = e.target.closest('.ctlrow'); row2.querySelectorAll('.ctlwarn').forEach(x => x.remove()); row2.querySelectorAll('select,[data-ctlf="ul"]').forEach(x => { x.disabled = true; if(x.tagName === 'SELECT') x.innerHTML = '<option>-</option>'; else x.value = ''; }); } ctlAcShow(e.target); return; }
+  else if(f === 'mode' || f === 'ctl'){ r[f] = e.target.value; ctlRenderRow(+row.dataset.ctli); }
+  else r[f] = e.target.value;
+  ctlSave(); ctlCalc();
+});
+document.addEventListener('click', e => {
+  let t;
+  if(!CTL.rows || !$('#ctlrows')) return;
+  if((t = e.target.closest('[data-ctladd]'))){ CTL.rows.push({m:'', ctl:'', mode:'', ul:'', n:''}); ctlRenderRows(); ctlSave(); return; }
+  if((t = e.target.closest('[data-ctldel]'))){ CTL.rows.splice(+t.dataset.ctldel, 1); if(!CTL.rows.length) CTL.rows.push({m:'', ctl:'', mode:'', ul:'', n:''}); ctlRenderRows(); ctlSave(); ctlCalc(); return; }
+  if(e.target.closest('[data-ctlclear]')){ CTL.rows = [{m:'', ctl:'', mode:'', ul:'', n:''}]; ctlRenderRows(); ctlSave(); ctlCalc(); return; }
+  if((t = e.target.closest('[data-ctlpick]'))){
+    const id = t.dataset.ctlpick, cn = t.dataset.ctlpickc || ''; let i = CTL.rows.findIndex(r => !r.m && !(r.q||'').trim());
+    if(i >= 0) Object.assign(CTL.rows[i], {m:id, q:MK[id].name, ctl:cn, mode:''}); else { CTL.rows.push({m:id, q:MK[id].name, ctl:cn, mode:'', ul:'', n:''}); i = CTL.rows.length - 1; }
+    ctlRenderRows(); ctlSave(); ctlCalc();
+    const inp = $(`[data-ctli="${i}"] [data-ctlf="n"]`); const box = $('#ctlrows');
+    if(box) box.scrollIntoView({behavior:'smooth', block:'center'}); if(inp) setTimeout(() => inp.focus({preventScroll:true}), 250);
+  }
+});
+
+document.getElementById('app').innerHTML=`<div class="cdesk"><div class="cwin"><div class="ctitle"><div class="l"><svg class="jms-mark" viewBox="0 0 120 120" aria-hidden="true"><rect class="ink" x="12" y="52" width="46" height="46" rx="20"/><path class="arch" d="M64 98 C72 72 77 52 84 52 C91 52 96 72 104 98" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle class="dot" cx="60" cy="26" r="13"/></svg><span>CSC 계산기</span></div><div class="fname">Control 계산기</div><div class="dots" aria-hidden="true"><i></i><i></i><i></i></div></div><div class="cbody">${viewControl()}</div><footer class="jms-foot"><svg class="jms-mark" viewBox="0 0 120 120" aria-hidden="true"><rect class="ink" x="12" y="52" width="46" height="46" rx="20"/><path class="arch" d="M64 98 C72 72 77 52 84 52 C91 52 96 72 104 98" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle class="dot" cx="60" cy="26" r="13"/></svg><span>from @jms</span></footer></div></div>`;
+Object.values(INIT).forEach(f=>f());
+</script></body></html>
