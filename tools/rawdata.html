@@ -2,7 +2,8 @@
 <!-- {:)} from @jms
      (c) 2026 @jms. Original work. Modified versions are welcome; please keep this notice.
      Changes: (날짜 / 내용 / 수정한 사람) 을 아래에 한 줄씩 추가하세요.
-     TS_Rev.00_261014 -->
+     2026-10-14 / Rev.02: 디자인(맑은 고딕) · 실험 규칙 ①②③ 화면 · 팝업 잘림 수정 · 마우스 뒤로 버튼 · 모바일 화면 /
+     TS_Rev.02_261014 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -203,6 +204,47 @@ table.edit input:focus,table.edit select:focus{outline:2px solid var(--accent);o
 .copyto.down .menu{bottom:auto;top:calc(100% + 6px)}
 
 .modal .ft{flex:none;padding:10px 18px;border-top:1px solid var(--line);text-align:right;background:#fcfcfa;border-radius:0 0 6px 6px}
+
+/* ===== 모바일 (화면 폭 820px 이하): 왼쪽 목록은 ☰ 메뉴로 · 카드·표는 한 줄로 쌓기 · 넓은 표는 표 안에서 옆으로 ===== */
+#menuBtn{display:none}
+.navback{display:none}
+@media (max-width:820px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .rail{position:fixed;left:0;top:0;bottom:0;z-index:80;width:min(280px,86vw);background:var(--bg);transform:translateX(-105%);transition:transform .18s;box-shadow:rgba(0,0,0,.25) 0 10px 40px}
+  .app.navopen .rail{transform:none}
+  .app.navopen .navback{display:block;position:fixed;inset:0;z-index:79;background:rgba(35,37,29,.35)}
+  #menuBtn{display:inline-block}
+  #top{padding:8px 10px;gap:6px}
+  #top .crumb{flex:1}
+  #filter{order:5;width:100%}
+  #filter .sel select{max-width:110px}
+  #top .right{order:4;width:100%;justify-content:flex-start;margin-left:0}
+  .zoom{display:none}
+  .deskwrap{padding:6px}
+  .window{border-radius:4px}
+  .titlebar .dots{display:none}.titlebar{grid-template-columns:20px 1fr 0}
+  .statusstrip{padding:6px 10px}
+  #viewInner{padding:10px 10px 30px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+  .card{overflow-x:auto}
+  .card:has(table.stat),.card:has(table.pivot),.card:has(table.wide){width:auto}
+  .clswrap{flex-direction:column}.clswrap .side{position:static;flex:none;width:100%}
+  .chartbox{flex:1 1 100%;min-width:0}
+  .rwrap{grid-template-columns:minmax(0,1fr)}
+  .rlist{position:static;max-height:260px}
+  .rglob{grid-template-columns:minmax(0,1fr)}
+  .rsub{width:100%}.rsub span{flex:1;padding:8px 6px;text-align:center;font-size:12px}
+  .radio{flex-direction:column}
+  .rdetail .dh .nav{margin-left:0}
+  .keys{display:none}
+  .actbar .msg{margin-left:0}
+  .modal{padding:0}
+  .modal .box{max-height:100vh;width:100vw;border-radius:0}
+  .modal .box[style*="max-width"]{width:100vw}
+  .opts{gap:10px}
+  #toTop{right:12px;bottom:14px}
+}
 </style>
 </head>
 <body>
@@ -213,14 +255,16 @@ table.edit input:focus,table.edit select:focus{outline:2px solid var(--accent);o
   <script>try { var h = location.href; try { h = decodeURIComponent(h); } catch (e) {} document.getElementById('bootWhere').appendChild(document.createTextNode(h)); } catch (e) {}</script>
 </div>
 <div class="app">
+<div class="navback" data-act="navclose"></div>
 <aside class="rail">
-  <div class="brand"><svg class="jms-mark" viewBox="0 0 120 120" role="img" aria-label="@jms"><rect x="12" y="52" width="46" height="46" rx="20" fill="#2B3050"/><path d="M64 98 C72 72 77 52 84 52 C91 52 96 72 104 98" fill="none" stroke="#2B3050" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle cx="84" cy="28" r="13" fill="#FF6A4D"/></svg><div><b>Raw Data 정리 도구</b><small>TS_Rev.00_261014</small></div></div>
+  <div class="brand"><svg class="jms-mark" viewBox="0 0 120 120" role="img" aria-label="@jms"><rect x="12" y="52" width="46" height="46" rx="20" fill="#2B3050"/><path d="M64 98 C72 72 77 52 84 52 C91 52 96 72 104 98" fill="none" stroke="#2B3050" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle cx="84" cy="28" r="13" fill="#FF6A4D"/></svg><div><b>Raw Data 정리 도구</b><small>TS_Rev.02_261014</small></div></div>
   <label id="drop" title="xlsx · csv 여러 개 가능 · 화면 아무 곳에나 끌어다 놓아도 됨">📂 파일 열기 (xlsx · csv)<input id="file" type="file" accept=".xlsx,.xlsm,.csv,.txt" multiple></label>
   <nav id="tabs"></nav>
   <div class="railfoot" id="railfoot">ichroma · AFIAS raw data<br>분류 정리 · 대시보드 · 엑셀 다운로드</div>
 </aside>
 <div class="main">
 <div id="top">
+  <span class="btn g sm" id="menuBtn" data-act="nav" title="메뉴">☰ 메뉴</span>
   <span class="crumb" id="crumb"></span>
   <div id="filter"></div>
   <div class="right">
@@ -836,7 +880,7 @@ const UI = (() => {
     $('#fname').textContent = has ? `${S.files.length > 1 ? `${S.files[0]} 외 ${S.files.length - 1}개` : S.files[0]} — ${nm[S.ui.tab] || ''}` : 'Raw Data 정리 도구';
     $('#railfoot').innerHTML = has ? `작업 파일 ${S.files.length}개 · 테스트 ${S.tests.length}건` : 'ichroma · AFIAS raw data<br>분류 정리 · 대시보드 · 엑셀 다운로드';
     renderHeader(); renderFilter();
-    const v = $('#viewInner'); if (!has) { v.innerHTML = `<div class="empty"><div class="big">📂</div><div>ichroma · AFIAS raw data 엑셀(xlsx) · CSV 파일을 <b>화면 아무 곳에나</b> 끌어다 놓거나 왼쪽 위 <b>📂 파일 열기</b>를 누르세요.</div><div class="muted">열 1개 = 테스트 1건인 raw data 시트를 자동으로 찾습니다 (상단에 정리 표가 있어도 됩니다). 파일 여러 개를 한 번에 올릴 수 있습니다.<br>불러온 파일과 설정은 이 PC 브라우저에 저장되어 새로고침(F5)해도 유지됩니다. 지우려면 [초기화].</div></div>`; return; }
+    const v = $('#viewInner'); if (!has) { v.innerHTML = `<div class="empty"><div class="big">📂</div><div>ichroma · AFIAS raw data 엑셀(xlsx) · CSV 파일을 <b>화면 아무 곳에나</b> 끌어다 놓거나 왼쪽 위 <b>📂 파일 열기</b>를 누르세요.</div><div style="margin:14px 0"><span class="btn" data-act="openfile">📂 파일 열기 (xlsx · csv)</span></div><div class="muted">열 1개 = 테스트 1건인 raw data 시트를 자동으로 찾습니다 (상단에 정리 표가 있어도 됩니다). 파일 여러 개를 한 번에 올릴 수 있습니다.<br>불러온 파일과 설정은 이 PC 브라우저에 저장되어 새로고침(F5)해도 유지됩니다. 지우려면 [초기화].</div></div>`; return; }
     const fn = { home, device, item, lot, error, cls, graph, rules, desc }[S.ui.tab]; v.innerHTML = fn();
     if (S.ui.tab === 'graph') bindGraph();
   }
@@ -1242,7 +1286,7 @@ const UI = (() => {
       if (e.target.classList && e.target.classList.contains('modal')) { if (downOn !== e.target) return; const c = e.target.querySelector('[data-ordcancel]'); if (c) c.click(); else e.target.remove(); return; }
       const el = e.target.closest('[data-tab],[data-act],[data-filter],[data-chip],[data-detail],[data-cats],[data-del],[data-add],[data-close]'); if (!el) return;
       if (el.dataset.close) { el.closest('.modal').remove(); return; }
-      if (el.dataset.tab) { S.ui.tab = el.dataset.tab; render(); return; }
+      if (el.dataset.tab) { S.ui.tab = el.dataset.tab; document.querySelector('.app').classList.remove('navopen'); render(); return; }
       if (el.dataset.chip) { if (el.dataset.chip === '*') S.ui.filter = { product: '', lot: '', device: '', cond: '' }; else S.ui.filter[el.dataset.chip] = ''; render(); return; }
       if (el.dataset.detail != null) { detail(+el.dataset.detail); return; }
       if (el.dataset.filter) { const obj = JSON.parse(el.dataset.filter); Object.keys(obj).forEach(k => { if (obj[k] === undefined) delete obj[k]; }); setFilter(obj, el.dataset.go || (S.ui.tab === 'device' ? 'cls' : S.ui.tab === 'home' || S.ui.tab === 'item' || S.ui.tab === 'lot' ? 'cls' : null)); return; }
@@ -1251,6 +1295,9 @@ const UI = (() => {
       if (el.dataset.add) { const sh = sheetFromEl(el); dirty.add(sh.key); readRuleInputs(); sh.rule.conds.push({ name: `조건 ${sh.rule.conds.length + 1}`, count: (sh.rangeInfo && sh.rangeInfo.rest) || 0, ref: '', lo: '', hi: '', type: 'control' }); MD.resolve(sh); render(); return; }
       const act = el.dataset.act; if (!act) return;
       if (act === 'back') { if (!closeTopModal()) back(); return; }
+      if (act === 'openfile') { document.getElementById('file').click(); return; }
+      if (act === 'nav') { document.querySelector('.app').classList.toggle('navopen'); return; }
+      if (act === 'navclose') { document.querySelector('.app').classList.remove('navopen'); return; }
       if (act === 'totop') { $('#view').scrollTo({ top: 0, behavior: 'smooth' }); document.querySelectorAll('#viewInner .tscroll').forEach(x => x.scrollTo({ top: 0, behavior: 'smooth' })); return; }
       if (act === 'reset') { if (!S.tests.length || confirm('불러온 파일과 실험 규칙·설정을 모두 지우고 처음 화면으로 돌아갑니다. 계속할까요?')) { if (window.__resetAll) window.__resetAll(); } return; }
       if (act === 'zoom:+') { setZoom((S.ui.zoom || 100) + 10); return; }
