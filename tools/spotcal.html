@@ -3,7 +3,8 @@
      Changes: (날짜 / 내용) 을 아래에 한 줄씩 추가하세요.
      2026-10-14 / Spot Calibration · Control 분리, Knowledge Base 디자인 · 모바일 화면, 로고
      2026-10-15 / 모바일 전용 화면: 한 행 한 줄 표, 기본 · 수동값 · 추천값 보기, 파일에서 불러오기(xlsx · csv), 추천 factor 카드 맨 아래
-     2026-10-15 / 상관성 그래프(비교 장비 X · 자사 장비 Y, 회귀식 · R²) 버튼 추가 (Rev.04 유지) -->
+     2026-10-15 / 상관성 그래프(비교 장비 X · 자사 장비 Y, 회귀식 · R²) 버튼 추가 (Rev.04 유지)
+     2026-10-15 / 상관성 그래프: 제외 행 회귀에서 뺌, 축 Comparator · Boditech Med, 회귀식 · R² (R) 그래프 안 상자(투명도 70%) (Rev.04 유지) -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -502,7 +503,7 @@ th { background: var(--surface-2); }
 .corr-stats .eq b { font-size: 13px; }
 .corr-lg { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--fg-muted); align-items: center; }
 .corr-lg span { display: inline-flex; align-items: center; gap: 4px; }
-.corr-lg .ln { display: inline-block; width: 18px; border-top: 2px solid #1c6fe6; }
+.corr-lg .ln { display: inline-block; width: 18px; border-top: 2px solid #d0342c; }
 .corr-lg .ln.dash { border-top: 1.5px dashed #9a9b92; }
 .corr-seg { display: grid; grid-template-columns: 1fr; gap: 6px; }
 .corr-seg button { background: #fff; padding: 7px 6px; font-size: 12.5px; }
@@ -729,7 +730,7 @@ th { background: var(--surface-2); }
 <div class="mob-only mbar" id="mbar"><div><small>Spot cal 추천 factor</small><b id="mbarVal">—</b></div><button type="button" id="mbarDl">엑셀 보고서 다운로드</button></div>
 <footer class="jms-foot"><svg class="jms-mark" viewBox="0 0 120 120" aria-hidden="true"><rect class="ink" x="12" y="52" width="46" height="46" rx="20"/><path class="arch" d="M64 98 C72 72 77 52 84 52 C91 52 96 72 104 98" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle class="dot" cx="60" cy="26" r="13"/></svg><span>from @jms</span></footer>
 </div></div>
-<div class="corr-ov" id="corrOv" hidden><div class="corr-dlg" role="dialog" aria-modal="true" aria-labelledby="corrTitle"><div class="corr-grab"></div><div class="corr-head"><div><b id="corrTitle">상관성 그래프</b> <span id="corrSub"></span></div><button type="button" id="corrClose" aria-label="닫기">×</button></div><div class="corr-body"><div class="corr-chart" id="corrChart"></div><div class="corr-side"><div class="corr-stats" id="corrStats"></div><div class="corr-lg"><span><svg width="10" height="10"><circle cx="5" cy="5" r="4.5" fill="#2B3050"/></svg> 측정값</span><span><svg width="10" height="10"><circle cx="5" cy="5" r="3.8" fill="#fff" stroke="#d14300" stroke-width="1.5"/></svg> 추천 계산 제외 행</span><span><i class="ln"></i>회귀선</span><span><i class="ln dash"></i>y = x</span></div><div class="corr-seg" id="corrSeg"><button type="button" data-m="raw">보정 전</button><button type="button" data-m="manual">수동 factor 적용</button><button type="button" data-m="reco">추천 factor 적용</button></div><button type="button" id="corrPng" class="pc-only">그림 저장 (PNG)</button></div></div></div></div>
+<div class="corr-ov" id="corrOv" hidden><div class="corr-dlg" role="dialog" aria-modal="true" aria-labelledby="corrTitle"><div class="corr-grab"></div><div class="corr-head"><div><b id="corrTitle">상관성 그래프</b> <span id="corrSub"></span></div><button type="button" id="corrClose" aria-label="닫기">×</button></div><div class="corr-body"><div class="corr-chart" id="corrChart"></div><div class="corr-side"><div class="corr-lg" id="corrLg"></div><div class="corr-seg" id="corrSeg"><button type="button" data-m="raw">보정 전</button><button type="button" data-m="manual">수동 factor 적용</button><button type="button" data-m="reco">추천 factor 적용</button></div><button type="button" id="corrPng" class="pc-only">그림 저장 (PNG)</button></div></div></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1890,7 +1891,7 @@ th { background: var(--surface-2); }
 /* 화면 전용 (계산과 무관): 상관성 그래프 — X 비교 장비, Y 자사 장비(단위 변환 시 변환값), 일반 최소제곱 회귀 */
 (function () {
   var V = window.SpotCalcView; if (!V) return;
-  var ov = document.getElementById('corrOv'), chartEl = document.getElementById('corrChart'), statsEl = document.getElementById('corrStats');
+  var ov = document.getElementById('corrOv'), chartEl = document.getElementById('corrChart'), lgEl = document.getElementById('corrLg');
   var seg = document.getElementById('corrSeg'), sub = document.getElementById('corrSub');
   var mode = 'raw', last = null;
   var FONT = "'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif", MONO = "'Source Code Pro',Menlo,Consolas,monospace";
@@ -1912,8 +1913,8 @@ th { background: var(--surface-2); }
     p.forEach(function (q) { sx += q.x; sy += q.y; sxx += q.x * q.x; sxy += q.x * q.y; syy += q.y * q.y; });
     var dx = n * sxx - sx * sx, dy = n * syy - sy * sy; if (!(dx > 0)) return null;
     var a = (n * sxy - sx * sy) / dx, b = (sy - a * sx) / n;
-    var r2 = dy > 0 ? Math.pow(n * sxy - sx * sy, 2) / (dx * dy) : NaN;
-    return { a: a, b: b, r2: r2, n: n };
+    var r = dy > 0 ? (n * sxy - sx * sy) / Math.sqrt(dx * dy) : NaN;
+    return { a: a, b: b, r: r, r2: r * r, n: n };
   }
   function svg(d, R, W, H, head) {
     var top = head ? 58 : 0, m = { l: 50, r: 14, t: 12 + top, b: 40 };
@@ -1927,7 +1928,7 @@ th { background: var(--surface-2); }
     s += '<rect width="' + W + '" height="' + H + '" fill="#fff"/>';
     if (head) {
       s += '<text x="12" y="22" font-family="' + FONT + '" font-size="14" font-weight="700" fill="#23251d">' + esc(head.title) + '</text>';
-      s += '<text x="12" y="44" font-family="' + MONO + '" font-size="12" fill="#23251d">' + esc(head.line) + '</text>';
+      if (head.line) s += '<text x="12" y="44" font-family="' + FONT + '" font-size="12" fill="#65675e">' + esc(head.line) + '</text>';
     }
     s += '<defs><clipPath id="corrClip"><rect x="' + m.l + '" y="' + m.t + '" width="' + pw + '" height="' + ph + '"/></clipPath></defs>';
     for (var t = lo; t <= hi + step / 2; t += step) {
@@ -1938,30 +1939,38 @@ th { background: var(--surface-2); }
     }
     s += '<rect x="' + m.l + '" y="' + m.t + '" width="' + pw + '" height="' + ph + '" fill="none" stroke="#bfc1b7"/>';
     s += '<g clip-path="url(#corrClip)"><line x1="' + X(lo) + '" y1="' + Y(lo) + '" x2="' + X(hi) + '" y2="' + Y(hi) + '" stroke="#9a9b92" stroke-dasharray="5 4" stroke-width="1.3"/>';
-    if (R) s += '<line x1="' + X(lo) + '" y1="' + Y(R.a * lo + R.b) + '" x2="' + X(hi) + '" y2="' + Y(R.a * hi + R.b) + '" stroke="#1c6fe6" stroke-width="2"/>';
+    if (R) s += '<line x1="' + X(lo) + '" y1="' + Y(R.a * lo + R.b) + '" x2="' + X(hi) + '" y2="' + Y(R.a * hi + R.b) + '" stroke="#d0342c" stroke-width="2.2"/>';
     s += '</g>';
     d.pts.forEach(function (q) {
-      var tip = '<title>' + (q.i + 1) + '행 · 비교 ' + q.x + ' · 자사 ' + parseFloat(q.y.toPrecision(10)) + (q.used ? '' : ' (추천 계산 제외)') + '</title>';
-      s += q.used ? '<circle cx="' + X(q.x) + '" cy="' + Y(q.y) + '" r="4.5" fill="#2B3050">' + tip + '</circle>'
-                  : '<circle cx="' + X(q.x) + '" cy="' + Y(q.y) + '" r="4.5" fill="#fff" stroke="#d14300" stroke-width="1.8">' + tip + '</circle>';
+      var tip = '<title>' + (q.i + 1) + '행 · Comparator ' + q.x + ' · Boditech Med ' + parseFloat(q.y.toPrecision(10)) + (q.used ? '' : ' (추천 계산 제외 · 회귀에서 뺌)') + '</title>';
+      s += q.used ? '<rect x="' + (X(q.x) - 4.5) + '" y="' + (Y(q.y) - 4.5) + '" width="9" height="9" fill="#55574f">' + tip + '</rect>'
+                  : '<rect x="' + (X(q.x) - 4) + '" y="' + (Y(q.y) - 4) + '" width="8" height="8" fill="#fff" stroke="#d14300" stroke-width="1.8">' + tip + '</rect>';
     });
-    var xl = '비교 장비' + (d.ur ? ' (' + d.ur + ')' : ''), yl = '자사 장비' + (mode === 'manual' ? ' × 수동 factor' : mode === 'reco' ? ' × 추천 factor' : '') + (d.uy ? ' (' + d.uy + ')' : '');
+    if (R) { /* 회귀식 · R² (R) 상자: 그래프 왼쪽 위, 바탕 투명도 70% */
+      var L = [eqText(R), 'R² = ' + fmt(R.r2, 4) + ' (R = ' + fmt(R.r, 4) + ')'];
+      var bw = Math.max(L[0].length, L[1].length) * 7.6 + 22, bx = m.l + 10, by = m.t + 10;
+      s += '<rect x="' + bx + '" y="' + by + '" width="' + bw + '" height="48" rx="4" fill="#fff" fill-opacity="0.3" stroke="#bfc1b7"/>';
+      L.forEach(function (t, k) { s += '<text x="' + (bx + 10) + '" y="' + (by + 20 + k * 18) + '" font-family="' + MONO + '" font-size="12.5" font-weight="700" fill="#23251d" stroke="#fff" stroke-width="3" stroke-opacity="0.85" paint-order="stroke" stroke-linejoin="round">' + esc(t) + '</text>'; });
+    }
+    var xl = 'Comparator' + (d.ur ? ' [' + d.ur + ']' : ''), yl = 'Boditech Med' + (d.uy ? ' [' + d.uy + ']' : '');
     s += '<text x="' + (m.l + pw / 2) + '" y="' + (H - 8) + '" font-family="' + FONT + '" font-size="11.5" font-weight="600" fill="#23251d" text-anchor="middle">' + esc(xl) + '</text>';
     s += '<text transform="translate(13 ' + (m.t + ph / 2) + ') rotate(-90)" font-family="' + FONT + '" font-size="11.5" font-weight="600" fill="#23251d" text-anchor="middle">' + esc(yl) + '</text>';
     return s + '</svg>';
   }
   function eqText(R) { return R ? 'y = ' + fmt(R.a, 4) + 'x ' + (R.b < 0 ? '− ' : '+ ') + fmt(Math.abs(R.b), 4) : '—'; }
   function draw() {
-    var d = data(), R = regress(d.pts); last = { d: d, R: R };
+    var d = data(), useP = d.pts.filter(function (q) { return q.used; }), R = regress(useP); last = { d: d, R: R };
     Array.prototype.forEach.call(seg.children, function (b) { var on = b.getAttribute('data-m') === mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
     var fl = mode === 'manual' ? '수동 factor ' + fmt(d.f, 2) : mode === 'reco' ? '추천 factor ' + fmt(d.f, 2) : '보정 전';
     sub.textContent = '· ' + (d.item ? d.item + ' · ' : '') + fl;
     if (!R) {
-      var why = mode === 'reco' && !isFinite(d.f) ? '추천 factor가 아직 없습니다.' : d.pts.length < 2 ? '비교 장비 · 자사 장비 값이 모두 있는 행이 2개 이상 있어야 그래프를 그립니다.' : '비교 장비 값이 모두 같아 회귀선을 그릴 수 없습니다.';
+      var why = mode === 'reco' && !isFinite(d.f) ? '추천 factor가 아직 없습니다.' : d.pts.length < 2 ? '비교 장비 · 자사 장비 값이 모두 있는 행이 2개 이상 있어야 그래프를 그립니다.' : useP.length < 2 ? '추천 계산에 포함된 행이 2개 이상 있어야 회귀선을 그립니다.' : '비교 장비 값이 모두 같아 회귀선을 그릴 수 없습니다.';
       chartEl.innerHTML = d.pts.length >= 1 && isFinite(d.f) ? svg(d, null, 400, 360) + '<p id="corrNote">' + why + '</p>' : '<div class="empty">' + why + '</div>';
     } else chartEl.innerHTML = svg(d, R, 400, 360);
-    statsEl.innerHTML = '<div class="eq">회귀식<b>' + eqText(R) + '</b></div><div>R²<b>' + (R ? fmt(R.r2, 4) : '—') + '</b></div><div>n<b>' + d.pts.length + '</b></div>' +
-      '<div class="pc-only">기울기<b>' + (R ? fmt(R.a, 4) : '—') + '</b></div><div class="pc-only">절편<b>' + (R ? fmt(R.b, 4) : '—') + '</b></div>';
+    var nx = d.pts.length - useP.length;
+    lgEl.innerHTML = '<span><svg width="10" height="10"><rect width="9" height="9" fill="#55574f"/></svg> 측정값 (n = ' + useP.length + ')</span>' +
+      (nx ? '<span><svg width="10" height="10"><rect x="1" y="1" width="8" height="8" fill="#fff" stroke="#d14300" stroke-width="1.6"/></svg> 추천 계산 제외 행 (회귀에서 뺌, ' + nx + ')</span>' : '') +
+      '<span><i class="ln"></i>회귀선</span><span><i class="ln dash"></i>y = x</span>';
     document.getElementById('corrPng').disabled = !R;
   }
   var opener = null;
@@ -1979,7 +1988,7 @@ th { background: var(--surface-2); }
     var my = ++pngSeq; if (png) { URL.revokeObjectURL(png.url); png = null; }
     if (!last || !last.R) return;
     var d = last.d, R = last.R, fl = mode === 'manual' ? '수동 factor ' + fmt(d.f, 2) + ' 적용' : mode === 'reco' ? '추천 factor ' + fmt(d.f, 2) + ' 적용' : '보정 전';
-    var head = { title: '상관성 그래프' + (d.item ? ' · ' + d.item : '') + ' · ' + fl, line: eqText(R) + '   R² = ' + fmt(R.r2, 4) + '   n = ' + R.n };
+    var head = { title: '상관성 그래프' + (d.item ? ' · ' + d.item : '') + ' · ' + fl, line: 'n = ' + R.n + (last.d.pts.length > R.n ? ' · 추천 계산 제외 ' + (last.d.pts.length - R.n) + '행은 회귀에서 뺌' : '') };
     var W = 520, H = 520, sc = 3, s = svg(d, R, W, H, head);
     var now = new Date(), pad = function (x) { return String(x).padStart(2, '0'); };
     var ymd = String(now.getFullYear()).slice(2) + pad(now.getMonth() + 1) + pad(now.getDate());
