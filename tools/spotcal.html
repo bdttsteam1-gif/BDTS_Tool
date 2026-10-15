@@ -4,7 +4,9 @@
      2026-10-14 / Spot Calibration · Control 분리, Knowledge Base 디자인 · 모바일 화면, 로고
      2026-10-15 / 모바일 전용 화면: 한 행 한 줄 표, 기본 · 수동값 · 추천값 보기, 파일에서 불러오기(xlsx · csv), 추천 factor 카드 맨 아래
      2026-10-15 / 상관성 그래프(비교 장비 X · 자사 장비 Y, 회귀식 · R²) 버튼 추가 (Rev.04 유지)
-     2026-10-15 / 상관성 그래프: 제외 행 회귀에서 뺌, 축 Comparator · Boditech Med, 회귀식 · R² (R) 그래프 안 상자(투명도 70%) (Rev.04 유지) -->
+     2026-10-15 / 상관성 그래프: 제외 행 회귀에서 뺌, 축 Comparator · Boditech Med, 회귀식 · R² (R) 그래프 안 상자(투명도 70%) (Rev.04 유지)
+     2026-10-15 / QC Mean을 비교 장비 값으로 쓰기(질문 · 행마다 Lv.1 / Lv.2 · 빠른 선택) (Rev.04 유지)
+     2026-10-15 / 다시 열 때 병원 · 제품 · QC 정보 · 수동 factor 칸이 비어 보이던 문제 수정 (Rev.04 유지) -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -525,6 +527,80 @@ th { background: var(--surface-2); }
   .corr-lg { order: 3; }
   .corr-seg { order: 4; grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ===== QC Mean을 비교 장비 값으로 (Rev.04, 화면 전용 · 계산은 그대로) ===== */
+.qc-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 12px 0; padding: 10px 12px; background: #2B3050; color: #fff; border-radius: 4px; font-size: 13.5px; }
+.qc-ask[hidden], .qc-bar[hidden] { display: none; }
+.qc-ask b { color: #ffd28a; }
+.qc-act { display: flex; gap: 6px; margin-left: auto; }
+.qc-act button { background: #fff; border-color: #fff; color: var(--fg); padding: 6px 12px; }
+.qc-act button.qc-p { background: #eb9d2a; border-color: #eb9d2a; font-weight: 600; }
+.qc-ask.mini { background: none; color: var(--fg-muted); padding: 4px 0; font-size: 12.5px; }
+.qc-ask.mini #qcNo { display: none; }
+.qc-ask.mini .qc-act { margin-left: 0; width: auto; }
+.qc-ask.mini .qc-act button.qc-p { background: #fff; border-color: #eb9d2a; color: #9a5b00; padding: 3px 10px; font-size: 12.5px; flex: none; }
+.qc-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 10px 12px 0; padding: 8px 10px; background: var(--accent-soft); border: 1px solid #b9cdf0; border-radius: 4px; font-size: 13px; }
+.qc-lb { font-weight: 700; color: #174f9e; }
+.qc-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.qc-q { color: var(--fg-muted); font-size: 12.5px; }
+.qc-bar button { background: #fff; padding: 4px 10px; font-size: 12.5px; }
+.qc-bar button.on { background: #2B3050; border-color: #2B3050; color: #fff; font-weight: 600; }
+.qc-bar button:disabled { opacity: .45; cursor: default; }
+.qc-end { margin-left: auto; }
+td.inp.qc-cell { white-space: nowrap; }
+td.inp .qc-lv { display: inline-flex; vertical-align: middle; margin-right: 6px; border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden; }
+td.inp .qc-lv button { border: 0; border-radius: 0; padding: 3px 7px; font-size: 11.5px; background: #fff; color: var(--fg-muted); line-height: 1.3; }
+td.inp .qc-lv button + button { border-left: 1px solid var(--line); }
+td.inp .qc-lv button.on1 { background: #2B3050; color: #fff; font-weight: 600; }
+td.inp .qc-lv button.on2 { background: #7a4fd6; color: #fff; font-weight: 600; }
+td.inp .qc-lv button:disabled { opacity: .4; }
+td.inp .qc-lv button:not(.on1):not(.on2) { display: none; }
+td.inp .qc-lv:not(:has(.on1)):not(:has(.on2)) button { display: inline-block; }
+td.inp.qc-cell { display: flex; align-items: center; gap: 4px; }
+td.inp.qc-cell .qc-lv { margin: 0; flex: none; }
+td.inp.qc-cell input { flex: 1; min-width: 0; width: auto; padding-left: 3px; padding-right: 4px; text-align: right; }
+td.inp input.qc-pk, #tbl td.inp input.qc-pk { background: #fde4ec !important; }
+td.inp input.qc-rd, #tbl td.inp input.qc-rd { color: #d0021b !important; font-weight: 700; }
+.qc-lgd { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--fg-muted); flex-wrap: wrap; }
+.qc-lgd i { display: inline-block; width: 14px; height: 12px; border-radius: 2px; background: #fde4ec; border: 1px solid #f3c4d3; }
+.qc-lgd b { color: #d0021b; }
+.qc-bar .qc-lgd { flex-basis: 100%; }
+.qc-card[hidden] { display: none; }
+.qc-card .qc-lgd { margin: 8px 0 0; }
+.qc-t { width: 100%; min-width: 0 !important; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
+.qc-t th, .qc-t td { white-space: normal; overflow: hidden; padding-left: 4px !important; padding-right: 4px !important; }
+.qc-t th:first-child { width: 34%; }
+.qc-t th:nth-child(2) { width: 10%; }
+.qc-t th { background: var(--surface-2); color: var(--fg-muted); font-weight: 600; font-size: 11px; padding: 5px 6px; text-align: right; border-bottom: 1px solid var(--line); }
+.qc-t th:first-child, .qc-t td:first-child { text-align: left; }
+.qc-t td { padding: 6px; border-bottom: 1px solid #ecede6; text-align: right; font-family: var(--font-mono); }
+.qc-t td.lv { font-family: var(--font-body); font-weight: 700; }
+.qc-t td.lv small { display: block; font-size: 10.5px; color: var(--fg-muted); font-weight: 400; }
+.qc-t .l1 { color: #2B3050; } .qc-t .l2 { color: #7a4fd6; }
+.qc-t td.pk { background: #fde4ec; } .qc-t td.rd { color: #d0021b; font-weight: 700; }
+.qc-fs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.qc-fs button { background: #fff; font-size: 12px; padding: 4px 9px; }
+.qc-fs button.on { background: #2B3050; border-color: #2B3050; color: #fff; font-weight: 600; }
+.qc-card .formula { margin-top: 8px; font-size: 11.5px; white-space: normal; overflow-wrap: anywhere; }
+.qc-card { min-width: 0; overflow: hidden; }
+.qc-t td.lv small { white-space: normal; }
+td.inp input.qc-ro { background: #eef0f4 !important; border-style: dashed !important; color: #3a4a6a; }
+@media (max-width: 420px) { .mob-bar button.imp-btn small { display: none; } }
+@media (max-width: 960px) {
+  .qc-ask, .qc-bar { margin: 8px 12px 0; }
+  .qc-ask { font-size: 13px; }
+  .qc-act { margin-left: 0; width: 100%; }
+  .qc-act button { flex: 1; padding: 8px 6px; }
+  .qc-end { padding: 4px 8px; }
+  #tbl td.inp.qc-cell { display: flex !important; align-items: center; gap: 3px; }
+  #tbl td.inp .qc-lv { margin: 0; flex: none; }
+  #tbl td.inp .qc-lv button { padding: 0 4px; height: 34px; font-size: 10.5px; }
+  #tbl td.inp .qc-lv button:not(.on1):not(.on2) { display: none; }
+  #tbl td.inp .qc-lv:not(:has(.on1)):not(:has(.on2)) button { display: inline-block; }
+  #tbl td.inp.qc-cell input { width: auto; flex: 1; min-width: 0; }
+  #tbl.v-m td.inp .qc-lv, #tbl.v-r td.inp .qc-lv { display: none; }
+  .qc-t td.lv small { display: none; }
+}
 </style>
 </head>
 <body>
@@ -623,6 +699,8 @@ th { background: var(--surface-2); }
         </div>
       </div>
       <div class="mob-only mob-bar"><div class="mrow"><button type="button" id="impBtn" class="imp-btn">파일에서 불러오기 <small>xlsx · csv</small></button><button type="button" id="corrBtnM" class="corr-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2v12h12" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="10" r="1.3" fill="currentColor"/><circle cx="9" cy="7.5" r="1.3" fill="currentColor"/><circle cx="12" cy="4.5" r="1.3" fill="currentColor"/><path d="M4 12L14 3" stroke="currentColor" stroke-width="1" opacity=".6"/></svg>상관성 그래프</button></div><input type="file" id="impFile" accept=".xlsx,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain" hidden><div class="imp-msg" id="impMsg" hidden><span id="impText"></span><span class="imp-act"><button type="button" id="impSwap">비교 ↔ 자사 바꾸기</button><button type="button" id="impClose" aria-label="닫기">×</button></span></div><div class="vseg" id="viewSeg" role="group" aria-label="표 보기"><button type="button" data-v="">기본</button><button type="button" data-v="m">수동값 보기</button><button type="button" data-v="r">추천값 보기</button></div><div class="vhint" id="vHint">행 번호를 누르면 추천 계산에 넣거나 뺍니다. <b>빨간 번호</b> = 제외 (최소 · 최대 Bias는 자동 제외)</div></div>
+      <div class="qc-ask" id="qcAsk" hidden><span id="qcAskText"></span><span class="qc-act"><button type="button" id="qcUse" class="qc-p">QC 값 사용</button><button type="button" id="qcNo">사용 안 함</button></span></div>
+      <div class="qc-bar" id="qcBar" hidden><span class="qc-lb">QC 값 사용 중</span><span id="qcVals"></span><span class="qc-quick"><span class="qc-q">빠른 선택</span><button type="button" data-q="1">전체 Lv.1</button><button type="button" data-q="2">전체 Lv.2</button><button type="button" data-q="h" id="qcHalf">반씩</button></span><button type="button" id="qcEnd" class="qc-end">QC 사용 끝내기</button><span class="qc-lgd"><i></i>QC Mean ±15% 벗어남 · <b>빨간 글자</b> QC 범위(Low~High) 밖</span></div>
       <div class="scroll">
         <table id="tbl">
           <thead>
@@ -692,6 +770,13 @@ th { background: var(--surface-2); }
         </dl>
         <div class="formula">factor = 1 ÷ (1 + 평균 Bias %)</div>
         <p class="note" id="s_note">비교 장비·자사 장비 값이 모두 입력된 행만 계산에 포함됩니다.</p>
+      </div>
+      <div class="card qc-card" id="qcCard" hidden>
+        <h2>QC 결과 (반복 측정)</h2>
+        <table class="qc-t" id="qcT"></table>
+        <div class="qc-fs" id="qcFs"><button type="button" data-f="raw" class="on">보정 전</button><button type="button" data-f="manual">수동 factor</button><button type="button" data-f="reco">추천 factor</button></div>
+        <div class="qc-lgd"><i></i>QC Mean ±15% 벗어남 · <b>빨간 글자</b> QC 범위(Low~High) 밖</div>
+        <div class="formula">평균 = 그 Level 모든 행의 자사 장비 값 평균<br>CV % = 표준편차(n−1) ÷ 평균 × 100<br>Bias % = (평균 ÷ QC Mean − 1) × 100</div>
       </div>
       <div class="card">
         <h2>보정 후 평균 Bias</h2>
@@ -1516,7 +1601,12 @@ th { background: var(--surface-2); }
     const col = (n) => String.fromCharCode(65 + n);
     const put = (r, cIdx, v, st) => { cells[r] = cells[r] || {}; cells[r][cIdx] = { v, st }; };
     const box = (r, c1, c2, v, st) => { for (let k = c1; k <= c2; k++) put(r, k, k === c1 ? v : null, st); if (c2 > c1) merges.push(`${col(c1)}${r}:${col(c2)}${r}`); };
-    const LAST = 8; // sheet is A..I
+    // QC Mean을 비교 장비 값으로 쓴 경우(화면의 QC 값 사용) — 읽기만 함
+    const QCI = (window.SpotQC && window.SpotQC.info()) || { on: false, levels: [] };
+    const qcOn = !!QCI.on && QCI.levels.some(v => v === '1' || v === '2');
+    const qo = qcOn ? 1 : 0;
+    const nCols = 3 + (c.cv.active ? 1 : 0) + 1 + 2 + (manual ? 0 : 1) + (c.R.hasAny ? 1 : 0) + qo;
+    const LAST = Math.max(8, nCols - 1); // sheet is A..I (A..J when every column is used with QC)
 
     const sTitle = S({ b: 1, sz: 16, color: X.white, fill: accent, h: 'left' });
     const sSub = S({ sz: 9, color: X.muted, h: 'left' });
@@ -1603,8 +1693,36 @@ th { background: var(--surface-2); }
       r++;
     }
 
+    if (qcOn) {
+      const sQh = S({ b: 1, sz: 10, fill: X.head, border: 1, wrap: 1 });
+      const sQl = (L) => S({ b: 1, sz: 10, border: 1, color: L === '1' ? '2B3050' : '7A4FD6' });
+      const sQn = (fmt) => S({ sz: 10, border: 1, fmt });
+      const sQj = (j, fmt) => S({ sz: 10, border: 1, fmt, fill: j.pk ? 'FDE4EC' : undefined, color: j.rd ? 'D0021B' : undefined, b: j.rd ? 1 : 0 });
+      const fq = manual ? c.fManual : c.fReco;
+      box(r, 0, LAST, 'QC 결과 (반복 측정)', sSec); heights[r] = 22; r++;
+      const hd = ['Level', 'QC Mean', 'Low', 'High', 'n', '평균', 'CV (%)', 'Bias (%) 보정 전', `Bias (%) ${manual ? '수동' : '추천'} factor ${f2(fq)} 적용`];
+      hd.forEach((t, k) => { if (k === hd.length - 1) box(r, k, LAST, t, sQh); else put(r, k, t, sQh); }); heights[r] = 30; r++;
+      ['1', '2'].forEach(L => {
+        const q = QCI.Q[L] || {};
+        const y = c.valid.filter(v => QCI.levels[v.i] === L).map(v => v.ours);
+        if (!y.length) return;
+        const nn = y.length, mean = y.reduce((s, v) => s + v, 0) / nn;
+        const sd = nn > 1 ? Math.sqrt(y.reduce((s, v) => s + (v - mean) * (v - mean), 0) / (nn - 1)) : NaN;
+        const j = QCI.judge(mean, q);
+        const b0 = isFinite(q.m) ? mean / q.m - 1 : NaN, b1 = isFinite(q.m) && isFinite(fq) ? mean * fq / q.m - 1 : NaN;
+        const fin = (v) => isFinite(v) ? v : '';
+        put(r, 0, `Lv.${L}`, sQl(L)); put(r, 1, fin(q.m), sQn('0.00')); put(r, 2, fin(q.lo), sQn('0.00')); put(r, 3, fin(q.hi), sQn('0.00'));
+        put(r, 4, nn, sQn()); put(r, 5, mean, sQj(j, '0.000')); put(r, 6, isFinite(sd) ? sd / mean : '', sQn('0.00%'));
+        put(r, 7, fin(b0), sBias(b0)); box(r, 8, LAST, fin(b1), sBias(b1, accentTint));
+        heights[r] = 20; r++;
+      });
+      box(r, 0, LAST, '· 평균 = 그 Level 모든 행의 자사 장비 값 평균, CV % = 표준편차(n−1) ÷ 평균 × 100, Bias % = (평균 ÷ QC Mean − 1) × 100. 판정 색: 옅은 핑크 = QC Mean ±15% 벗어남, 빨간 글자 = QC 범위(Low~High) 밖.', sNote); heights[r] = 28; r += 2;
+    }
+
     // measurement table — only the chosen factor's columns
-    const cols = [{ t: 'No.', st: sHead, w: 'no' }, { t: `비교 장비${uTag(ur)}`, st: sHead }, { t: `자사 장비${uTag(uo)}`, st: sHead }];
+    const cols = [{ t: 'No.', st: sHead, w: 'no' }];
+    if (qcOn) cols.push({ t: 'QC', st: sHead });
+    cols.push({ t: `비교 장비${uTag(ur)}`, st: sHead }, { t: `자사 장비${uTag(uo)}`, st: sHead });
     if (cv.active) cols.push({ t: `자사 변환${uTag(ur)}`, st: sHeadC, conv: 1 });
     cols.push({ t: 'Bias (%)', st: sHead });
     cols.push({ t: `${manual ? '수동' : '추천'} 보정값${uTag(ur)}`, st: sHeadA }, { t: `${manual ? '수동' : '추천'} Bias (%)`, st: sHeadA });
@@ -1613,7 +1731,7 @@ th { background: var(--surface-2); }
     if (hasRef) cols.push({ t: '참고치 판정 (비교 / 자사 / 보정)', st: sHead });
     const lastCol = cols.length - 1;
     box(r, 0, LAST, '측정 정보', sSec); heights[r] = 22; r++;
-    const infoEnd = cv.active ? 4 : 3;
+    const infoEnd = (cv.active ? 4 : 3) + qo;
     box(r, 0, infoEnd, '정보', sHead); box(r, infoEnd + 1, infoEnd + 2, `Spot cal (${manual ? '수동' : '추천'})`, sHeadA);
     if (!manual || hasRef) box(r, infoEnd + 3, LAST, '비고', sHead); else if (infoEnd + 2 < LAST) box(r, infoEnd + 3, LAST, '', sHead);
     heights[r] = 20; r++;
@@ -1623,7 +1741,12 @@ th { background: var(--surface-2); }
       if (row.ref === '' && row.ours === '') return;
       const x = rowCalc(c, i);
       const v = (q) => isFinite(q) ? q : '';
-      const vals = [[i + 1, sNo], [isFinite(x.ref) ? x.ref : row.ref, sNum()], [isFinite(x.raw) ? x.raw : row.ours, sNum()]];
+      const qlv = qcOn ? (QCI.levels[i] || '') : '';
+      const qj = qlv && x.ok ? QCI.judge(x.ours, QCI.Q[qlv]) : null;
+      const sOwn = qj && (qj.pk || qj.rd) ? S({ sz: 10, border: 1, fmt: '0.00', fill: qj.pk ? 'FDE4EC' : undefined, color: qj.rd ? 'D0021B' : undefined, b: qj.rd ? 1 : 0 }) : sNum();
+      const vals = [[i + 1, sNo]];
+      if (qcOn) vals.push([qlv ? `Lv.${qlv}` : '', S({ b: 1, sz: 10, border: 1, color: qlv === '2' ? '7A4FD6' : '2B3050' })]);
+      vals.push([isFinite(x.ref) ? x.ref : row.ref, sNum()], [isFinite(x.raw) ? x.raw : row.ours, sOwn]);
       if (cv.active) vals.push([v(x.ours), sConv]);
       vals.push([v(x.b), sBias(x.b)]);
       if (manual) vals.push([v(x.mv), sNum(accentTint)], [v(x.mb), sBias(x.mb, accentTint)]);
@@ -1637,7 +1760,7 @@ th { background: var(--surface-2); }
       vals.forEach(([val, st], k) => { if (k === lastCol) box(r, k, LAST, val, st); else put(r, k, val, st); });
       heights[r] = 20; r++;
     });
-    const biasCol = cv.active ? 4 : 3;
+    const biasCol = (cv.active ? 4 : 3) + qo;
     box(r, 0, biasCol - 1, `평균 (n = ${c.valid.length})`, sFoot);
     put(r, biasCol, isFinite(c.avgBias) ? c.avgBias - 1 : '', sFootPct());
     put(r, biasCol + 1, null, sFootPct(accentSoft));
@@ -1654,6 +1777,7 @@ th { background: var(--surface-2); }
     put(r, 0, 'Bias 색상', S({ sz: 9, color: X.muted, h: 'left' }));
     put(r, 1, '−10% 이하', legend(X.lime)); put(r, 2, '−20% 이하', legend(X.lime, X.limeSoft));
     put(r, 3, '+10% 이상', legend(X.red)); put(r, 4, '+20% 이상', legend(X.red, X.redSoft)); heights[r] = 18; r++;
+    if (qcOn) { put(r, 0, 'QC 판정', S({ sz: 9, color: X.muted, h: 'left' })); box(r, 1, 3, 'QC Mean ±15% 벗어남', legend(X.ink, 'FDE4EC')); box(r, 4, 6, 'QC 범위(Low~High) 밖', legend('D0021B')); heights[r] = 18; r++; }
     box(r, 0, LAST, `· Bias % = (값 ÷ 비교 장비 − 1) × 100. 양수는 자사 장비가 높게, 음수는 낮게 측정됨을 뜻합니다.${cv.active ? ` 자사 장비 값은 ${cv.k != null ? '계수 ×' + fmtK(cv.k) + '로 ' : ''}비교 단위로 변환한 뒤 계산했습니다.` : ''}`, sNote); r++;
     if (manual) { box(r, 0, LAST, `· 보정값 = 자사 장비 값 × 수동 factor ${f2(c.fManual)}.`, sNote); r++; }
     else { box(r, 0, LAST, '· 추천 factor = 1 ÷ (1 + 평균 Bias). 유효 데이터가 3개 이상이면 Bias 최소·최대 행을 하나씩 제외하고 평균합니다(「포함」으로 지정한 행은 계산에 넣음). factor는 소수점 2자리로 반올림해 적용합니다.', sNote); heights[r] = 28; r++; }
@@ -1670,16 +1794,16 @@ th { background: var(--surface-2); }
       });
       rowsXml += '</row>';
     });
-    const colsXml = '<cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="8" width="13" customWidth="1"/><col min="9" max="9" width="14" customWidth="1"/></cols>';
+    const colsXml = '<cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="8" width="13" customWidth="1"/><col min="9" max="9" width="14" customWidth="1"/>' + (LAST > 8 ? `<col min="10" max="${LAST + 1}" width="14" customWidth="1"/>` : '') + '</cols>';
     const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:I${r}"/><sheetViews><sheetView showGridLines="0" workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="16.5"/>${colsXml}<sheetData>${rowsXml}</sheetData><mergeCells count="${merges.length}">${merges.map(x => `<mergeCell ref="${x}"/>`).join('')}</mergeCells><printOptions horizontalCentered="1"/><pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:${col(LAST)}${r}"/><sheetViews><sheetView showGridLines="0" workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="16.5"/>${colsXml}<sheetData>${rowsXml}</sheetData><mergeCells count="${merges.length}">${merges.map(x => `<mergeCell ref="${x}"/>`).join('')}</mergeCells><printOptions horizontalCentered="1"/><pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/></worksheet>`;
     const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${numFmts.length ? `<numFmts count="${numFmts.length}">${numFmts.map((f, i) => `<numFmt numFmtId="${164 + i}" formatCode="${xesc(f)}"/>`).join('')}</numFmts>` : ''}<fonts count="${fonts.length}">${fonts.join('')}</fonts><fills count="${fills.length}">${fills.join('')}</fills><borders count="${borders.length}">${borders.join('')}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
     const sheetName = manual ? '수동 factor' : '추천 factor';
     const files = [
       { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>' },
       { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
-      { name: 'xl/workbook.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${sheetName}" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">'${sheetName}'!$A$1:$I$${r}</definedName></definedNames></workbook>` },
+      { name: 'xl/workbook.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${sheetName}" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">'${sheetName}'!$A$1:$${col(LAST)}$${r}</definedName></definedNames></workbook>` },
       { name: 'xl/_rels/workbook.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
       { name: 'xl/styles.xml', data: styles },
       { name: 'xl/worksheets/sheet1.xml', data: sheet }
@@ -1691,7 +1815,10 @@ th { background: var(--surface-2); }
   window.SpotCalcView = { compute: compute, itemName: itemName }; // 화면 전용(상관성 그래프)에서 읽기만 함
   function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1800); }
 
-  load(); buildItemList(); syncUnitBar(); buildRows(); render(); updateInfoSummary();
+  load();
+  // 저장된 병원 · 제품 · QC 정보와 수동 factor를 화면 칸에 다시 채움(Rev.03까지는 칸이 저장값을 읽기 전에 채워져 빈칸으로 보였음)
+  metaKeys.forEach(k => { const el = $(k); if (el) el.value = state.meta[k] ?? (k === 'f_manual' ? '1' : ''); });
+  buildItemList(); syncUnitBar(); buildRows(); render(); updateInfoSummary();
 })();
 </script>
 
@@ -2007,6 +2134,162 @@ th { background: var(--surface-2); }
     var a = document.createElement('a'); a.href = png.url; a.download = png.name;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   });
+})();
+</script>
+<script>
+/* 화면 전용: QC Mean을 비교 장비 값으로 쓰기. 값은 비교 장비 칸에 그대로 들어가므로 계산 · 엑셀은 원래 방식 그대로. */
+(function () {
+  var KEY = 'spotcal-qc', S = { on: false, dis: '' };
+  try { var r = JSON.parse(localStorage.getItem(KEY) || 'null'); if (r) S = { on: !!r.on, dis: r.dis || '' }; } catch (e) {}
+  function saveS() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  var $ = function (id) { return document.getElementById(id); };
+  var rowsEl = $('rows'), ask = $('qcAsk'), bar = $('qcBar');
+  function num(s) { s = String(s == null ? '' : s).trim(); if (!/^[-+]?(\d+\.?\d*|\.\d+)$/.test(s)) return null; return s; }
+  function means() { return { 1: num($('q1_mean').value), 2: num($('q2_mean').value) }; }
+  function sig(m) { return (m[1] || '') + '|' + (m[2] || ''); }
+  var lastM = means();
+  function rows() { return Array.prototype.slice.call(rowsEl.children); }
+  function refIn(tr) { return tr.querySelector('input[data-f="ref"]'); }
+  function setRef(tr, v) { var el = refIn(tr); if (!el || el.value === v) return; el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }
+  function setLv(tr, lv) {
+    var m = means();
+    if (lv && !m[lv]) return;
+    tr.dataset.qclv = lv || '';
+    if (lv) setRef(tr, m[lv]);
+    decorate(tr);
+  }
+  function decorate(tr) {
+    var td = tr.querySelector('td.inp'), el = refIn(tr); if (!td || !el) return;
+    var box = td.querySelector('.qc-lv');
+    if (!S.on) { if (box) box.remove(); td.classList.remove('qc-cell'); el.readOnly = false; el.classList.remove('qc-ro'); delete tr.dataset.qclv; return; }
+    var m = means();
+    if (tr.dataset.qclv === undefined) { tr.dataset.qclv = (m[1] && el.value === m[1]) ? '1' : (m[2] && el.value === m[2]) ? '2' : ''; }
+    var lv = tr.dataset.qclv;
+    if (!box) {
+      box = document.createElement('span'); box.className = 'qc-lv';
+      box.innerHTML = '<button type="button" data-lv="1" tabindex="-1">Lv.1</button><button type="button" data-lv="2" tabindex="-1">Lv.2</button>';
+      td.insertBefore(box, td.firstChild); td.classList.add('qc-cell');
+    }
+    var b1 = box.children[0], b2 = box.children[1];
+    b1.className = lv === '1' ? 'on1' : ''; b2.className = lv === '2' ? 'on2' : '';
+    b1.disabled = !m[1]; b2.disabled = !m[2];
+    b1.setAttribute('aria-pressed', lv === '1'); b2.setAttribute('aria-pressed', lv === '2');
+    el.readOnly = !!lv; el.classList.toggle('qc-ro', !!lv);
+  }
+  function decorateAll() { rows().forEach(decorate); }
+  function half() { var n = rows().length; return Math.ceil(n / 2); }
+  function fill(mode) {
+    var m = means(), h = half();
+    rows().forEach(function (tr, i) {
+      var lv = mode === 'h' ? (i < h ? '1' : '2') : mode;
+      if (!m[lv]) lv = m[1] ? '1' : '2';
+      setLv(tr, lv);
+    });
+    markQuick(mode);
+  }
+  var quick = '';
+  function markQuick(q) { quick = q; Array.prototype.forEach.call(bar.querySelectorAll('[data-q]'), function (b) { b.classList.toggle('on', b.getAttribute('data-q') === q); }); }
+  function refresh() {
+    var m = means(), has = !!(m[1] || m[2]);
+    if (S.on && !has) { S.on = false; saveS(); }
+    ask.hidden = S.on || !has;
+    var mini = S.dis === sig(m); ask.classList.toggle('mini', mini);
+    if (!ask.hidden) {
+      var w = m[1] && m[2] ? 'Lv.1 · Lv.2 Mean' : m[1] ? 'Lv.1 Mean' : 'Lv.2 Mean';
+      $('qcAskText').innerHTML = mini ? 'QC ' + w + '을 비교 장비 값으로 쓰려면' : 'QC <b>' + w + '</b>이 입력되어 있습니다. 비교 장비 값으로 QC Mean을 사용할까요?';
+    }
+    bar.hidden = !S.on;
+    if (S.on) {
+      $('qcVals').textContent = [m[1] ? 'Lv.1 = ' + m[1] : '', m[2] ? 'Lv.2 = ' + m[2] : ''].filter(Boolean).join(' · ');
+      var n = rows().length, h = half();
+      $('qcHalf').textContent = n > 1 ? '1~' + h + '행 Lv.1 · ' + (h + 1 === n ? n : (h + 1) + '~' + n) + '행 Lv.2' : '반씩';
+      bar.querySelector('[data-q="1"]').disabled = !m[1];
+      bar.querySelector('[data-q="2"]').disabled = !m[2];
+      $('qcHalf').disabled = !(m[1] && m[2]) || n < 2;
+    }
+    decorateAll();
+  }
+  $('qcUse').addEventListener('click', function () {
+    var m = means();
+    var filled = rows().some(function (tr) { var el = refIn(tr); return el && el.value !== '' && el.value !== m[1] && el.value !== m[2]; });
+    if (filled && !confirm('입력된 비교 장비 값을 QC Mean으로 바꿀까요?')) return;
+    S.on = true; saveS(); refresh();
+    fill(m[1] && m[2] && rows().length > 1 ? 'h' : (m[1] ? '1' : '2'));
+  });
+  $('qcNo').addEventListener('click', function () { S.dis = sig(means()); saveS(); refresh(); });
+  $('qcEnd').addEventListener('click', function () { S.on = false; S.dis = sig(means()); saveS(); markQuick(''); refresh(); });
+  bar.addEventListener('click', function (e) { var b = e.target.closest('[data-q]'); if (b && !b.disabled) fill(b.getAttribute('data-q')); });
+  rowsEl.addEventListener('click', function (e) {
+    var b = e.target.closest('.qc-lv button'); if (!b || b.disabled) return;
+    var tr = b.closest('tr'), lv = b.getAttribute('data-lv');
+    // 고른 Level 단추만 보이므로 누르면 다른 Level로 바뀜
+    if (tr.dataset.qclv === lv) { var o = lv === '1' ? '2' : '1'; if (means()[o]) lv = o; }
+    setLv(tr, lv); markQuick('');
+  });
+  ['q1_mean', 'q2_mean'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      var m = means();
+      if (S.on) rows().forEach(function (tr) { var lv = tr.dataset.qclv; if (lv) { if (m[lv]) setRef(tr, m[lv]); else { tr.dataset.qclv = ''; } } });
+      lastM = m; refresh();
+    });
+  });
+  // 행 추가 · 삭제 · 측정값만 지우기로 표가 다시 그려지면 단추를 다시 붙임
+  new MutationObserver(function () { if (S.on) refresh(); else decorateAll(); paint(); }).observe(rowsEl, { childList: true });
+
+  /* QC 결과 카드 · 판정 색 (옅은 핑크 = QC Mean ±15% 벗어남, 빨간 글자 = QC Low~High 밖) */
+  var V = window.SpotCalcView, fmode = 'raw', card = $('qcCard');
+  function qinfo() {
+    var g = function (id) { var v = num($(id).value); return v === null ? NaN : parseFloat(v); };
+    return { 1: { m: g('q1_mean'), lo: g('q1_low'), hi: g('q1_high') }, 2: { m: g('q2_mean'), lo: g('q2_low'), hi: g('q2_high') } };
+  }
+  function judge(v, q) {
+    if (!isFinite(v) || !q || !isFinite(q.m)) return { pk: false, rd: false };
+    return { pk: Math.abs(v / q.m - 1) > 0.15 + 1e-12, rd: (isFinite(q.lo) && v < q.lo) || (isFinite(q.hi) && v > q.hi) };
+  }
+  function levels() { return rows().map(function (tr) { return S.on ? (tr.dataset.qclv || '') : ''; }); }
+  function stats(c, L, f) {
+    var lv = levels(), y = c.valid.filter(function (v) { return lv[v.i] === L; }).map(function (v) { return v.ours * f; });
+    var n = y.length; if (!n) return { n: 0 };
+    var m = y.reduce(function (s, v) { return s + v; }, 0) / n;
+    var sd = n > 1 ? Math.sqrt(y.reduce(function (s, v) { return s + (v - m) * (v - m); }, 0) / (n - 1)) : NaN;
+    return { n: n, mean: m, cv: sd / m * 100, bias: m };
+  }
+  function fx(v, d) { return isFinite(v) ? v.toFixed(d) : '—'; }
+  function pct(v) { if (!isFinite(v)) return '—'; var s = v.toFixed(2); if (s === '-0.00') s = '0.00'; return (v > 0 && s !== '0.00' ? '+' : '') + s; }
+  var painting = false;
+  function paint() {
+    if (painting || !V) return; painting = true;
+    try {
+      var c = V.compute(), Q = qinfo(), lv = levels(), byI = {};
+      c.valid.forEach(function (v) { byI[v.i] = v; });
+      rows().forEach(function (tr, i) {
+        var el = tr.querySelector('input[data-f="ours"]'); if (!el) return;
+        var j = S.on && lv[i] && byI[i] ? judge(byI[i].ours, Q[lv[i]]) : { pk: false, rd: false };
+        el.classList.toggle('qc-pk', j.pk); el.classList.toggle('qc-rd', j.rd);
+      });
+      var any = S.on && (lv.indexOf('1') >= 0 || lv.indexOf('2') >= 0);
+      card.hidden = !any;
+      if (any) {
+        var f = fmode === 'manual' ? c.fManual : fmode === 'reco' ? c.fReco : 1, h = '<tr><th>Level</th><th>n</th><th>평균</th><th>CV %</th><th>Bias %</th></tr>';
+        ['1', '2'].forEach(function (L) {
+          var q = Q[L], s = stats(c, L, isFinite(f) ? f : NaN); if (!s.n) return;
+          var j = judge(s.mean, q), b = isFinite(q.m) ? (s.mean / q.m - 1) * 100 : NaN;
+          h += '<tr><td class="lv l' + L + '">Lv.' + L + '<small>목표 ' + fx(q.m, 2) + (isFinite(q.lo) || isFinite(q.hi) ? ' (' + fx(q.lo, 2) + '–' + fx(q.hi, 2) + ')' : '') + '</small></td><td>' + s.n + '</td><td class="' + (j.pk ? 'pk ' : '') + (j.rd ? 'rd' : '') + '">' + fx(s.mean, 3) + '</td><td>' + fx(s.cv, 2) + '</td><td>' + pct(b) + '</td></tr>';
+        });
+        $('qcT').innerHTML = h;
+        var fb = $('qcFs').children;
+        fb[1].textContent = '수동 factor ' + fx(c.fManual, 2); fb[2].textContent = '추천 factor ' + fx(c.fReco, 2);
+        Array.prototype.forEach.call(fb, function (b) { b.classList.toggle('on', b.getAttribute('data-f') === fmode); });
+      }
+    } finally { painting = false; }
+  }
+  $('qcFs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { fmode = b.getAttribute('data-f'); paint(); } });
+  var pend = false;
+  function schedule() { if (pend) return; pend = true; requestAnimationFrame(function () { pend = false; paint(); }); }
+  ['input', 'change', 'click'].forEach(function (ev) { document.addEventListener(ev, schedule, true); });
+  /* 엑셀 보고서에서 읽는 값(읽기만 함) */
+  window.SpotQC = { info: function () { return { on: S.on, levels: levels(), Q: qinfo(), judge: judge }; } };
+  refresh(); paint();
 })();
 </script>
 </body>
