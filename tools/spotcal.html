@@ -1,7 +1,9 @@
 <!-- {:)} from @jms
      (c) 2026 @jms. Original work. Modified versions are welcome; please keep this notice.
      Changes: (날짜 / 내용) 을 아래에 한 줄씩 추가하세요.
-     2026-10-14 / Spot Calibration · Control 분리, Knowledge Base 디자인 · 모바일 화면, 로고 -->
+     2026-10-14 / Spot Calibration · Control 분리, Knowledge Base 디자인 · 모바일 화면, 로고
+     2026-10-15 / 모바일 전용 화면: 한 행 한 줄 표, 기본 · 수동값 · 추천값 보기, 파일에서 불러오기(xlsx · csv), 추천 factor 카드 맨 아래
+     2026-10-15 / 상관성 그래프(비교 장비 X · 자사 장비 Y, 회귀식 · R²) 버튼 추가 (Rev.04 유지) -->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -398,6 +400,130 @@ th { background: var(--surface-2); }
   .mbar b.over { color: var(--bad); }
   .mbar button { margin-left: auto; background: #eb9d2a; border-color: #eb9d2a; font-weight: 600; padding: 8px 14px; }
 }
+
+/* ===== 모바일 Rev.04 (960px 이하만): 한 행 한 줄 표 · 보기 전환 · 파일 불러오기 ===== */
+@media (max-width: 960px) {
+  header p { display: none; }
+  .summary > .card.reco { order: 3; }
+  .mob-bar { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px 2px; justify-content: flex-start; }
+  .mob-bar button.imp-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 12px; font-size: 13.5px; font-weight: 600; color: #174f9e; background: var(--accent-soft); border: 1.5px dashed #9fb6dc; }
+  .mob-bar button.imp-btn small { font-weight: 400; font-size: 12px; color: #4a6a9c; }
+  .imp-msg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; background: #2B3050; color: #fff; border-radius: 4px; padding: 8px 10px; font-size: 12.5px; line-height: 1.4; }
+  .imp-msg[hidden] { display: none; }
+  .imp-msg b { color: #ffd28a; }
+  .imp-msg.err { background: var(--bad-soft); color: var(--bad); }
+  .imp-msg.err #impSwap { display: none; }
+  .imp-act { display: flex; gap: 6px; margin-left: auto; }
+  .mob-bar .imp-msg button { font-size: 12px; padding: 4px 9px; color: var(--fg); background: #fff; border-color: #fff; }
+  .mob-bar .imp-msg.err button { border-color: var(--line-strong); }
+  .vseg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden; background: var(--surface); }
+  .mob-bar .vseg button { border: 0; border-left: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--fg); font-size: 13px; padding: 8px 0; }
+  .mob-bar .vseg button:first-child { border-left: 0; }
+  .mob-bar .vseg button.on { background: #2B3050; color: #fff; font-weight: 600; }
+  .mob-bar .vseg button.on[data-v="m"] { background: var(--warn); }
+  .mob-bar .vseg button.on[data-v="r"] { background: var(--accent); }
+
+  /* 표: 한 행 = 한 줄 */
+  #tbl { --cols: 24px minmax(0,1fr) minmax(0,1fr) 62px 30px; }
+  #tbl.v-m, #tbl.v-r { --cols: 24px minmax(0,1fr) minmax(0,1fr) 52px 52px 52px; }
+      #tbl thead { display: block; }
+  #tbl thead tr, #tbl tbody tr { display: grid; grid-template-columns: var(--cols); gap: 4px; align-items: center; padding: 3px 4px; margin: 0; background: none; border: 0; border-top: 1px solid #ecede6; border-radius: 0; }
+  #tbl thead tr { border-top: 0; background: var(--surface-2); padding-block: 5px; }
+  #tbl thead th { display: block; padding: 0; border: 0; background: none; font-size: 10.5px; line-height: 1.15; text-align: center; color: var(--fg-muted); font-weight: 600; width: auto; white-space: normal; overflow: hidden; }
+  #tbl thead th .u { display: block; font-size: 9.5px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #tbl tbody { display: block; padding: 0; gap: 0; }
+  #tbl tbody td, #tbl thead th { grid-column: auto !important; grid-row: auto !important; }
+  #tbl tbody td::before { display: none !important; }
+  #tbl tbody td:nth-child(n+4), #tbl thead th:nth-child(n+4) { display: none !important; }
+  #tbl tbody td:nth-child(5), #tbl thead th:nth-child(5) { display: block !important; }
+  #tbl:not(.v-m):not(.v-r) tbody td:nth-child(11), #tbl:not(.v-m):not(.v-r) thead th:nth-child(11) { display: block !important; }
+  #tbl.v-m tbody td:nth-child(6), #tbl.v-m tbody td:nth-child(7), #tbl.v-m thead th:nth-child(6), #tbl.v-m thead th:nth-child(7) { display: block !important; }
+  #tbl.v-r tbody td:nth-child(8), #tbl.v-r tbody td:nth-child(9), #tbl.v-r thead th:nth-child(8), #tbl.v-r thead th:nth-child(9) { display: block !important; }
+  /* 추천값 보기: 포함 · 제외는 행 번호에 표시, 번호를 누르면 바뀜 */
+  #tbl.v-r td.no { cursor: pointer; border-radius: 3px; padding: 3px 0; border: 1px solid var(--line); background: var(--surface); }
+  #tbl.v-r tbody tr:has(td.c-tag:empty) td.no { border-color: transparent; background: none; cursor: default; }
+  #tbl.v-r tbody tr:has(td.c-tag.tag-ex) td.no { color: var(--bad); background: var(--bad-soft); border-color: #e9b9a2; font-weight: 700; }
+  #tbl.v-r tbody tr:has(td.c-tag.tag-ex) td.no::after { content: "제외"; display: block; font-family: var(--font-body); font-size: 9px; line-height: 1.1; }
+  #tbl.v-r tbody tr:has(td.c-tag.tag-pin) td.no { color: var(--accent); border-color: var(--accent); font-weight: 700; }
+  #tbl.v-r tbody tr:has(td.c-tag.tag-pin) td.no::after { content: "포함"; display: block; font-family: var(--font-body); font-size: 9px; line-height: 1.1; }
+  .vhint { display: none; font-size: 11.5px; color: var(--fg-muted); line-height: 1.35; }
+  .ledger:has(#tbl.v-r) .vhint { display: block; }
+  .vhint b { color: var(--bad); }
+  #tbl td.no { font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; color: var(--fg-muted); text-align: center; line-height: 1.1; }
+  #tbl td.no::after { content: none; }
+  #tbl td.no .mis { display: block; margin: 0; font-size: 10px; }
+  #tbl td.inp { position: relative; }
+  #tbl td.inp input, #tbl td.inp:has(.jl) input { height: 34px; padding: 4px 5px; font-size: 14px; text-align: right; }
+  #tbl td.inp .mkw { left: 3px; right: auto; top: 50%; bottom: auto; transform: translateY(-50%); text-align: left; }
+  #tbl td.inp .mkw .jl { font-size: 9.5px; padding: 0 3px; }
+  #tbl td.inp input.imp-new { background: #fff8d6; border-color: #e5cf6b; }
+  #tbl td.calc { padding: 5px 2px; font-size: 11.5px; letter-spacing: -0.02em; text-align: right; border-radius: 3px; white-space: nowrap; overflow: hidden; }
+  #tbl td.calc .val { display: block; }
+  #tbl td.calc .jl { display: none; }
+  #tbl td.c-bias { background: none; }
+  #tbl td.delcell { text-align: center; }
+  #tbl td .del { width: 28px; height: 30px; padding: 0; font-size: 14px; }
+  #tbl td.c-tag { display: block; padding: 0; text-align: center; }
+  #tbl td.c-tag .tg { display: block; font-size: 10.5px; line-height: 1.15; padding: 3px 1px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); cursor: pointer; white-space: normal; }
+  #tbl td.c-tag.tag-ex .tg { color: var(--bad); background: var(--bad-soft); border-color: #e9b9a2; }
+  #tbl td.c-tag.tag-pin .tg { color: var(--accent); border-color: var(--accent); }
+  #tbl td.c-tag button.pin { display: none; }
+  #tbl tbody tr:has(td.c-tag.tag-ex) td.inp input { color: var(--fg-muted); }
+  /* 평균 줄 */
+  #tbl tfoot tr { grid-template-columns: var(--cols); gap: 4px; padding: 8px 4px; align-items: center; }
+  #tbl tfoot td { display: none !important; text-align: right; font-size: 11.5px; letter-spacing: -0.02em; padding: 0 2px; white-space: nowrap; }
+  #tbl tfoot td[colspan] { display: block !important; grid-column: 1 / 4; text-align: left; font-size: 12.5px; }
+  #tbl tfoot td:nth-child(3) { display: block !important; }
+  #tbl:not(.v-m):not(.v-r) tfoot td:nth-child(9) { display: block !important; }
+  #tbl.v-m tfoot td:nth-child(4), #tbl.v-m tfoot td:nth-child(5) { display: block !important; }
+  #tbl.v-r tfoot td:nth-child(6), #tbl.v-r tfoot td:nth-child(7) { display: block !important; }
+  #avg_bias::before, #avg_manual::before, #avg_reco::before { content: none; }
+}
+
+/* ===== 상관성 그래프 (Rev.04, 화면 전용 · 계산과 무관) ===== */
+.corr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-color: #2B3050; color: #2B3050; background: #fff; font-weight: 600; }
+.corr-btn svg { width: 16px; height: 16px; flex: none; }
+.corr-btn:hover { background: #f1f2f6; }
+.corr-ov { position: fixed; inset: 0; z-index: 60; background: rgba(35,37,29,.45); display: grid; place-items: center; padding: 16px; }
+.corr-ov[hidden] { display: none; }
+.corr-dlg { width: min(680px, 100%); max-height: calc(100dvh - 32px); overflow: auto; background: #fff; border: 1px solid var(--line-strong); border-radius: 6px; padding: 14px 18px 18px; box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+.corr-grab { display: none; }
+.corr-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+.corr-head b { font-family: var(--font-title); font-size: 16px; }
+.corr-head span { color: var(--fg-muted); font-size: 12.5px; }
+.corr-head button { width: 32px; height: 32px; padding: 0; font-size: 16px; flex: none; background: #fff; }
+.corr-body { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.corr-chart svg { display: block; width: 100%; height: auto; }
+.corr-chart .empty { aspect-ratio: 400 / 360; display: grid; place-items: center; text-align: center; color: var(--fg-muted); background: var(--surface-2); border-radius: 4px; font-size: 13px; padding: 16px; }
+.corr-side { display: grid; gap: 8px; }
+.corr-stats { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.corr-stats div { background: var(--surface-2); border-radius: 4px; padding: 6px 9px; font-size: 11px; color: var(--fg-muted); }
+.corr-stats b { display: block; font-family: var(--font-mono); font-size: 14px; color: var(--fg); font-weight: 600; word-break: break-all; }
+.corr-stats .eq b { font-size: 13px; }
+.corr-lg { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--fg-muted); align-items: center; }
+.corr-lg span { display: inline-flex; align-items: center; gap: 4px; }
+.corr-lg .ln { display: inline-block; width: 18px; border-top: 2px solid #1c6fe6; }
+.corr-lg .ln.dash { border-top: 1.5px dashed #9a9b92; }
+.corr-seg { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.corr-seg button { background: #fff; padding: 7px 6px; font-size: 12.5px; }
+.corr-seg button.on { background: #2B3050; border-color: #2B3050; color: #fff; font-weight: 600; }
+#corrPng { background: #fff; padding: 7px 6px; }
+#corrNote { font-size: 11.5px; color: var(--fg-muted); }
+@media (max-width: 960px) {
+  .pc-only { display: none !important; }
+  .mrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mob-bar .corr-btn { padding: 9px 8px; font-size: 13.5px; border: 1px solid #2B3050; color: #2B3050; background: #fff; }
+  .mob-bar button.imp-btn { padding: 9px 6px; }
+  .corr-ov { place-items: end stretch; padding: 0; }
+  .corr-dlg { width: 100%; max-height: 92dvh; border-radius: 14px 14px 0 0; border: 0; padding: 10px 14px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .corr-grab { display: block; width: 40px; height: 4px; border-radius: 2px; background: #d0d1c9; margin: 0 auto 10px; }
+  .corr-body { display: flex; flex-direction: column; gap: 8px; }
+  .corr-side { display: contents; }
+  .corr-stats { order: 1; grid-template-columns: 1.6fr 1fr .6fr; }
+  .corr-chart { order: 2; }
+  .corr-lg { order: 3; }
+  .corr-seg { order: 4; grid-template-columns: repeat(3, 1fr); }
+}
 </style>
 </head>
 <body>
@@ -410,7 +536,7 @@ th { background: var(--surface-2); }
       <div class="eyebrow">CSC · 계산기</div>
       <h1>Spot Calibration 계산기</h1>
       <p>비교 장비 대비 자사 장비의 Bias %를 계산하고, 최소·최대 Bias를 뺀 평균으로 추천 Spot cal factor를 구합니다. 입력값은 이 브라우저에 자동 저장됩니다.</p>
-      <div class="rev">기술영업팀_Rev.03_261014</div>
+      <div class="rev">기술영업팀_Rev.04_261015</div>
     </div></div>
     <div class="head-right">
     <div class="toolbar">
@@ -495,7 +621,7 @@ th { background: var(--surface-2); }
           <div class="fi"><span class="lb">판정 기준</span><div class="seg" id="refModeSeg"><button type="button" data-mode="each">각자</button><button type="button" data-mode="cmp">비교 장비</button><button type="button" data-mode="own">자사</button></div></div>
         </div>
       </div>
-      <div class="mob-only mob-bar"><button type="button" id="corrToggle" aria-pressed="false" aria-controls="tbl">보정값 · 변환값 보기 ▾</button></div>
+      <div class="mob-only mob-bar"><div class="mrow"><button type="button" id="impBtn" class="imp-btn">파일에서 불러오기 <small>xlsx · csv</small></button><button type="button" id="corrBtnM" class="corr-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2v12h12" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="10" r="1.3" fill="currentColor"/><circle cx="9" cy="7.5" r="1.3" fill="currentColor"/><circle cx="12" cy="4.5" r="1.3" fill="currentColor"/><path d="M4 12L14 3" stroke="currentColor" stroke-width="1" opacity=".6"/></svg>상관성 그래프</button></div><input type="file" id="impFile" accept=".xlsx,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain" hidden><div class="imp-msg" id="impMsg" hidden><span id="impText"></span><span class="imp-act"><button type="button" id="impSwap">비교 ↔ 자사 바꾸기</button><button type="button" id="impClose" aria-label="닫기">×</button></span></div><div class="vseg" id="viewSeg" role="group" aria-label="표 보기"><button type="button" data-v="">기본</button><button type="button" data-v="m">수동값 보기</button><button type="button" data-v="r">추천값 보기</button></div><div class="vhint" id="vHint">행 번호를 누르면 추천 계산에 넣거나 뺍니다. <b>빨간 번호</b> = 제외 (최소 · 최대 Bias는 자동 제외)</div></div>
       <div class="scroll">
         <table id="tbl">
           <thead>
@@ -532,6 +658,7 @@ th { background: var(--surface-2); }
       <div class="table-foot">
         <button type="button" id="btnAdd">+ 행 추가</button>
         <button type="button" id="btnClearRows">측정값만 지우기</button>
+        <button type="button" id="corrBtn" class="corr-btn pc-only"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2v12h12" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="10" r="1.3" fill="currentColor"/><circle cx="9" cy="7.5" r="1.3" fill="currentColor"/><circle cx="12" cy="4.5" r="1.3" fill="currentColor"/><path d="M4 12L14 3" stroke="currentColor" stroke-width="1" opacity=".6"/></svg>상관성 그래프</button>
         <div class="legend">
           <span>Bias 색상:</span>
           <span><i class="bias-low">−10</i> −10% 이하</span>
@@ -602,6 +729,7 @@ th { background: var(--surface-2); }
 <div class="mob-only mbar" id="mbar"><div><small>Spot cal 추천 factor</small><b id="mbarVal">—</b></div><button type="button" id="mbarDl">엑셀 보고서 다운로드</button></div>
 <footer class="jms-foot"><svg class="jms-mark" viewBox="0 0 120 120" aria-hidden="true"><rect class="ink" x="12" y="52" width="46" height="46" rx="20"/><path class="arch" d="M64 98 C72 72 77 52 84 52 C91 52 96 72 104 98" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle class="dot" cx="60" cy="26" r="13"/></svg><span>from @jms</span></footer>
 </div></div>
+<div class="corr-ov" id="corrOv" hidden><div class="corr-dlg" role="dialog" aria-modal="true" aria-labelledby="corrTitle"><div class="corr-grab"></div><div class="corr-head"><div><b id="corrTitle">상관성 그래프</b> <span id="corrSub"></span></div><button type="button" id="corrClose" aria-label="닫기">×</button></div><div class="corr-body"><div class="corr-chart" id="corrChart"></div><div class="corr-side"><div class="corr-stats" id="corrStats"></div><div class="corr-lg"><span><svg width="10" height="10"><circle cx="5" cy="5" r="4.5" fill="#2B3050"/></svg> 측정값</span><span><svg width="10" height="10"><circle cx="5" cy="5" r="3.8" fill="#fff" stroke="#d14300" stroke-width="1.5"/></svg> 추천 계산 제외 행</span><span><i class="ln"></i>회귀선</span><span><i class="ln dash"></i>y = x</span></div><div class="corr-seg" id="corrSeg"><button type="button" data-m="raw">보정 전</button><button type="button" data-m="manual">수동 factor 적용</button><button type="button" data-m="reco">추천 factor 적용</button></div><button type="button" id="corrPng" class="pc-only">그림 저장 (PNG)</button></div></div></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1559,6 +1687,7 @@ th { background: var(--surface-2); }
   }
 
   let toastTimer;
+  window.SpotCalcView = { compute: compute, itemName: itemName }; // 화면 전용(상관성 그래프)에서 읽기만 함
   function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1800); }
 
   load(); buildItemList(); syncUnitBar(); buildRows(); render(); updateInfoSummary();
@@ -1566,23 +1695,308 @@ th { background: var(--surface-2); }
 </script>
 
 <script>
-/* 화면 전용 (계산과 무관): 모바일 아래 막대에 추천 factor 표시, 보정값 보기 전환 */
+/* 화면 전용 (계산과 무관): 모바일 아래 막대에 추천 factor 표시, 보기 전환, 파일에서 불러오기 */
 (function () {
   var src = document.getElementById('f_reco'), out = document.getElementById('mbarVal');
   function sync() { out.textContent = src.textContent; out.classList.toggle('over', src.classList.contains('over')); }
   new MutationObserver(sync).observe(src, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
   sync();
-  var tbl = document.getElementById('tbl'), tg = document.getElementById('corrToggle');
-  tg.addEventListener('click', function () {
-    var on = tbl.classList.toggle('show-corr');
-    tg.setAttribute('aria-pressed', on);
-    tg.textContent = on ? '보정값 · 변환값 숨기기 ▴' : '보정값 · 변환값 보기 ▾';
+  var tbl = document.getElementById('tbl');
+  /* 모바일 보기 전환: 기본 / 수동값 / 추천값 (화면만 바뀜, 계산 · 엑셀과 무관) */
+  var VKEY = 'spotcal-mview', seg = document.getElementById('viewSeg');
+  function setView(v) {
+    tbl.classList.toggle('v-m', v === 'm'); tbl.classList.toggle('v-r', v === 'r');
+    Array.prototype.forEach.call(seg.children, function (b) { var on = b.getAttribute('data-v') === v; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+    try { localStorage.setItem(VKEY, v); } catch (e) {}
+  }
+  var v0 = ''; try { v0 = localStorage.getItem(VKEY) || ''; } catch (e) {}
+  setView(v0 === 'm' || v0 === 'r' ? v0 : '');
+  seg.addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) setView(b.getAttribute('data-v')); });
+  /* 추천값 보기(모바일): 행 번호를 누르면 원래 「포함 / 제외」 버튼을 누른 것과 같음 */
+  document.getElementById('rows').addEventListener('click', function (e) {
+    if (!tbl.classList.contains('v-r') || !window.matchMedia('(max-width: 960px)').matches) return;
+    var no = e.target.closest('td.no'); if (!no) return;
+    var b = no.parentNode.querySelector('td.c-tag button.pin'); if (b) b.click();
   });
+
+  /* ---------- 파일에서 불러오기 (xlsx · csv · txt) ----------
+     숫자가 나란히 있는 두 열(같은 행에 둘 다 숫자)을 찾아 왼쪽 열 → 비교 장비, 오른쪽 열 → 자사 장비.
+     여러 곳이면 가장 많이 이어진 곳. 1, 2, 3 … 번호 열 옆에 숫자 열이 2개 더 있으면 번호 열은 건너뜀. */
+  var impBtn = document.getElementById('impBtn'), impFile = document.getElementById('impFile');
+  var impMsg = document.getElementById('impMsg'), impText = document.getElementById('impText');
+  var last = null;
+  function colName(c) { var s = ''; c++; while (c > 0) { var m = (c - 1) % 26; s = String.fromCharCode(65 + m) + s; c = Math.floor((c - 1) / 26); } return s; }
+  function colIndex(s) { var n = 0; for (var i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64); return n - 1; }
+  function toNum(s) {
+    if (s == null) return null; s = String(s).trim();
+    if (!/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(s)) return null;
+    var n = Number(s); if (!isFinite(n)) return null;
+    return String(parseFloat(n.toPrecision(12)));
+  }
+  function msg(html, err) { impText.innerHTML = html; impMsg.classList.toggle('err', !!err); impMsg.hidden = false; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // --- zip (xlsx) ---
+  function u16(d, o) { return d[o] | (d[o + 1] << 8); }
+  function u32(d, o) { return (d[o] | (d[o + 1] << 8) | (d[o + 2] << 16) | (d[o + 3] << 24)) >>> 0; }
+  function unzipList(d) {
+    var e = -1; for (var i = d.length - 22; i >= Math.max(0, d.length - 65558); i--) if (u32(d, i) === 0x06054b50) { e = i; break; }
+    if (e < 0) throw new Error('zip');
+    var n = u16(d, e + 10), p = u32(d, e + 16), files = {};
+    for (var k = 0; k < n; k++) {
+      if (u32(d, p) !== 0x02014b50) break;
+      var method = u16(d, p + 10), csize = u32(d, p + 20), nl = u16(d, p + 28), el = u16(d, p + 30), cl = u16(d, p + 32), lo = u32(d, p + 42);
+      var name = new TextDecoder().decode(d.subarray(p + 46, p + 46 + nl));
+      files[name] = { method: method, csize: csize, lo: lo };
+      p += 46 + nl + el + cl;
+    }
+    return files;
+  }
+  function unzipRead(d, f) {
+    if (!f) return Promise.resolve(null);
+    var o = f.lo, start = o + 30 + u16(d, o + 26) + u16(d, o + 28);
+    var raw = d.subarray(start, start + f.csize);
+    if (f.method === 0) return Promise.resolve(new TextDecoder().decode(raw));
+    if (f.method !== 8) return Promise.reject(new Error('method'));
+    if (typeof DecompressionStream === 'undefined') return Promise.reject(new Error('nods'));
+    var ds = new DecompressionStream('deflate-raw');
+    var stream = new Blob([raw]).stream().pipeThrough(ds);
+    return new Response(stream).text();
+  }
+  function xml(s) { return new DOMParser().parseFromString(s, 'application/xml'); }
+  function byTag(doc, t) { return doc.getElementsByTagNameNS('*', t); }
+  function readXlsx(buf) {
+    var d = new Uint8Array(buf), files = unzipList(d), sheetPath = null, sheetName = '';
+    return Promise.all([unzipRead(d, files['xl/workbook.xml']), unzipRead(d, files['xl/_rels/workbook.xml.rels']), unzipRead(d, files['xl/sharedStrings.xml'])]).then(function (r) {
+      if (r[0] && r[1]) {
+        var sh = byTag(xml(r[0]), 'sheet')[0];
+        if (sh) {
+          sheetName = sh.getAttribute('name') || '';
+          var rid = sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id') || sh.getAttribute('r:id');
+          var rels = byTag(xml(r[1]), 'Relationship');
+          for (var i = 0; i < rels.length; i++) if (rels[i].getAttribute('Id') === rid) {
+            var t = rels[i].getAttribute('Target'); sheetPath = t.charAt(0) === '/' ? t.slice(1) : 'xl/' + t.replace(/^\.\//, '');
+          }
+        }
+      }
+      if (!sheetPath || !files[sheetPath]) sheetPath = Object.keys(files).filter(function (k) { return /^xl\/worksheets\/[^/]+\.xml$/.test(k); }).sort()[0];
+      var ss = [];
+      if (r[2]) { var si = byTag(xml(r[2]), 'si'); for (var j = 0; j < si.length; j++) { var ts = byTag(si[j], 't'), s = ''; for (var q = 0; q < ts.length; q++) s += ts[q].textContent; ss.push(s); } }
+      return unzipRead(d, files[sheetPath]).then(function (sx) {
+        if (!sx) throw new Error('sheet');
+        var cells = byTag(xml(sx), 'c'), grid = {};
+        for (var i = 0; i < cells.length; i++) {
+          var c = cells[i], ref = c.getAttribute('r') || '', m = /^([A-Z]+)(\d+)$/.exec(ref); if (!m) continue;
+          var t = c.getAttribute('t'), vEl = byTag(c, 'v')[0], val = null;
+          if (t === 's') val = vEl ? ss[+vEl.textContent] : null;
+          else if (t === 'inlineStr') { var is = byTag(c, 't'); val = is.length ? is[0].textContent : null; }
+          else if (t === 'b' || t === 'e') val = null;
+          else val = vEl ? vEl.textContent : null;
+          var n = toNum(val); if (n === null) continue;
+          var row = +m[2] - 1, col = colIndex(m[1]);
+          (grid[row] = grid[row] || {})[col] = n;
+        }
+        return { grid: grid, where: sheetName };
+      });
+    });
+  }
+  function readText(text) {
+    text = text.replace(/^﻿/, '');
+    var lines = text.split(/\r\n|\r|\n/), grid = {};
+    var first = lines.find(function (l) { return l.trim(); }) || '';
+    var delim = first.indexOf('\t') >= 0 ? '\t' : (first.split(';').length > first.split(',').length ? ';' : ',');
+    lines.forEach(function (line, r) {
+      var cells = [], cur = '', q = false;
+      for (var i = 0; i < line.length; i++) { var ch = line[i];
+        if (q) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+        else if (ch === '"') q = true; else if (ch === delim) { cells.push(cur); cur = ''; } else cur += ch; }
+      cells.push(cur);
+      cells.forEach(function (v, c) { var n = toNum(v); if (n !== null) (grid[r] = grid[r] || {})[c] = n; });
+    });
+    return { grid: grid, where: '' };
+  }
+  function findPair(grid) {
+    // 같은 행에 숫자가 연달아 있는 열 묶음(가로 덩어리) → 세로로 이어지는 구간
+    var best = null, rows = Object.keys(grid).map(Number).sort(function (a, b) { return a - b; });
+    var maxC = 0; rows.forEach(function (r) { Object.keys(grid[r]).forEach(function (c) { if (+c > maxC) maxC = +c; }); });
+    for (var c = 0; c < maxC; c++) {
+      var run = null;
+      var flush = function () { if (run && run.n >= 2 && (!best || run.n > best.n)) best = run; run = null; };
+      for (var k = 0; k < rows.length; k++) {
+        var r = rows[k], g = grid[r];
+        var ok = g[c] != null && g[c + 1] != null;
+        if (ok && run && r === run.r1 + 1) { run.r1 = r; run.n++; }
+        else { flush(); if (ok) run = { c: c, r0: r, r1: r, n: 1 }; }
+      }
+      flush();
+    }
+    if (!best) return null;
+    var span = function (cc) { for (var r = best.r0; r <= best.r1; r++) if (!grid[r] || grid[r][cc] == null) return false; return true; };
+    var cols = []; for (var x = best.c; span(x); x++) cols.push(x);
+    var isSeq = function (cc) { for (var r = best.r0; r <= best.r1; r++) if (Number(grid[r][cc]) !== r - best.r0 + 1) return false; return true; };
+    var a = cols[0];
+    if (cols.length >= 3 && isSeq(cols[0])) a = cols[1];
+    var refCol = a, ownCol = a + 1, vals = [];
+    for (var r = best.r0; r <= best.r1; r++) vals.push([grid[r][refCol], grid[r][ownCol]]);
+    return { refCol: refCol, ownCol: ownCol, r0: best.r0, r1: best.r1, vals: vals, numCols: cols.length };
+  }
+  function fill(p, swap) {
+    var vals = p.vals.map(function (v) { return swap ? [v[1], v[0]] : v; });
+    document.getElementById('btnClearRows').click();
+    var rowsEl = document.getElementById('rows');
+    while (rowsEl.children.length < vals.length) document.getElementById('btnAdd').click();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    vals.forEach(function (v, i) {
+      ['ref', 'ours'].forEach(function (f, j) {
+        var el = document.getElementById('r' + i + '_' + f); if (!el) return;
+        el.value = v[j]; el.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+    vals.forEach(function (v, i) { ['ref', 'ours'].forEach(function (f) { var el = document.getElementById('r' + i + '_' + f); if (el) el.classList.add('imp-new'); }); });
+    var tt = document.getElementById('toast'); if (tt) tt.classList.remove('show');
+    var rc = colName(swap ? p.ownCol : p.refCol), oc = colName(swap ? p.refCol : p.ownCol);
+    var range = colName(p.refCol) + (p.r0 + 1) + ':' + colName(p.ownCol) + (p.r1 + 1);
+    msg((last.where ? esc(last.where) + ' · ' : '') + range + '에서 <b>' + vals.length + '행</b>을 불러왔습니다.<br>' + rc + '열 → 비교 장비 · ' + oc + '열 → 자사 장비' +
+      (p.numCols > 2 ? '<br>숫자 열이 ' + p.numCols + '개 나란히 있어 ' + colName(p.refCol) + ' · ' + colName(p.ownCol) + '열을 넣었습니다.' : ''));
+  }
+  document.getElementById('rows').addEventListener('input', function (e) { if (e.isTrusted && e.target.classList) e.target.classList.remove('imp-new'); });
+  impBtn.addEventListener('click', function () { impFile.value = ''; impFile.click(); });
+  impFile.addEventListener('change', function () {
+    var f = impFile.files && impFile.files[0]; if (!f) return;
+    var isX = /\.xlsx$/i.test(f.name) || /spreadsheetml/.test(f.type);
+    var rd = isX ? f.arrayBuffer().then(readXlsx) : f.text().then(readText);
+    rd.then(function (res) {
+      var p = findPair(res.grid);
+      if (!p) { msg('숫자가 나란히 있는 두 열을 찾지 못했습니다. (두 열 · 2행 이상 필요)', true); return; }
+      var has = Array.prototype.some.call(document.querySelectorAll('#rows input[data-f]'), function (el) { return el.value !== ''; });
+      if (has && !confirm('입력된 측정값을 지우고 파일 값(' + p.vals.length + '행)으로 바꿀까요?')) return;
+      last = { p: p, swap: false, where: res.where };
+      fill(p, false);
+    }).catch(function (err) {
+      msg(err && err.message === 'nods' ? '이 브라우저에서는 xlsx를 읽을 수 없습니다. csv로 저장해 넣어 주세요.' : '파일을 읽지 못했습니다. xlsx 또는 csv 파일인지 확인해 주세요.', true);
+    });
+  });
+  document.getElementById('impSwap').addEventListener('click', function () { if (!last) return; last.swap = !last.swap; fill(last.p, last.swap); });
+  document.getElementById('impClose').addEventListener('click', function () { impMsg.hidden = true; });
   document.getElementById('mbarDl').addEventListener('click', function (e) {
     e.stopPropagation();
     document.getElementById('btnDownload').click();
     var pop = document.getElementById('dlPop');
     if (!pop.hidden) pop.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+})();
+</script>
+<script>
+/* 화면 전용 (계산과 무관): 상관성 그래프 — X 비교 장비, Y 자사 장비(단위 변환 시 변환값), 일반 최소제곱 회귀 */
+(function () {
+  var V = window.SpotCalcView; if (!V) return;
+  var ov = document.getElementById('corrOv'), chartEl = document.getElementById('corrChart'), statsEl = document.getElementById('corrStats');
+  var seg = document.getElementById('corrSeg'), sub = document.getElementById('corrSub');
+  var mode = 'raw', last = null;
+  var FONT = "'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif", MONO = "'Source Code Pro',Menlo,Consolas,monospace";
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function txt(id) { var e = document.getElementById(id); return e ? e.textContent.trim() : ''; }
+  function fmt(v, d) { if (!isFinite(v)) return '—'; var s = v.toFixed(d); return s === '-' + (0).toFixed(d) ? (0).toFixed(d) : s; }
+  function tickFmt(v, step) { var d = step >= 1 ? 0 : Math.min(6, Math.ceil(-Math.log10(step) + 1e-9)); return String(parseFloat(v.toFixed(d))); }
+  function niceStep(r) { var p = Math.pow(10, Math.floor(Math.log10(r))), f = r / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; }
+  function data() {
+    var c = V.compute(), f = mode === 'manual' ? c.fManual : mode === 'reco' ? c.fReco : 1;
+    var used = {}; c.used.forEach(function (v) { used[v.i] = true; });
+    var pts = isFinite(f) ? c.valid.map(function (v) { return { i: v.i, x: v.ref, y: v.ours * f, used: !!used[v.i] }; }) : [];
+    var ur = txt('th_ref'), uy = c.cv && c.cv.active ? ur : txt('th_own');
+    return { c: c, f: f, pts: pts, ur: ur, uy: uy, item: V.itemName() };
+  }
+  function regress(p) {
+    var n = p.length; if (n < 2) return null;
+    var sx = 0, sy = 0, sxx = 0, sxy = 0, syy = 0;
+    p.forEach(function (q) { sx += q.x; sy += q.y; sxx += q.x * q.x; sxy += q.x * q.y; syy += q.y * q.y; });
+    var dx = n * sxx - sx * sx, dy = n * syy - sy * sy; if (!(dx > 0)) return null;
+    var a = (n * sxy - sx * sy) / dx, b = (sy - a * sx) / n;
+    var r2 = dy > 0 ? Math.pow(n * sxy - sx * sy, 2) / (dx * dy) : NaN;
+    return { a: a, b: b, r2: r2, n: n };
+  }
+  function svg(d, R, W, H, head) {
+    var top = head ? 58 : 0, m = { l: 50, r: 14, t: 12 + top, b: 40 };
+    var vals = []; d.pts.forEach(function (q) { vals.push(q.x, q.y); });
+    var lo = Math.min(0, Math.min.apply(null, vals)), hi = Math.max.apply(null, vals);
+    if (!(hi > lo)) hi = lo + 1;
+    var step = niceStep((hi - lo) / 4); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi * 1.04 / step) * step;
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var X = function (v) { return m.l + (v - lo) / (hi - lo) * pw; }, Y = function (v) { return m.t + ph - (v - lo) / (hi - lo) * ph; };
+    var s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="상관성 그래프">';
+    s += '<rect width="' + W + '" height="' + H + '" fill="#fff"/>';
+    if (head) {
+      s += '<text x="12" y="22" font-family="' + FONT + '" font-size="14" font-weight="700" fill="#23251d">' + esc(head.title) + '</text>';
+      s += '<text x="12" y="44" font-family="' + MONO + '" font-size="12" fill="#23251d">' + esc(head.line) + '</text>';
+    }
+    s += '<defs><clipPath id="corrClip"><rect x="' + m.l + '" y="' + m.t + '" width="' + pw + '" height="' + ph + '"/></clipPath></defs>';
+    for (var t = lo; t <= hi + step / 2; t += step) {
+      s += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(t) + '" y2="' + Y(t) + '" stroke="#ecede6"/>';
+      s += '<line y1="' + m.t + '" y2="' + (m.t + ph) + '" x1="' + X(t) + '" x2="' + X(t) + '" stroke="#ecede6"/>';
+      s += '<text x="' + (m.l - 6) + '" y="' + (Y(t) + 4) + '" font-family="' + MONO + '" font-size="10.5" fill="#65675e" text-anchor="end">' + tickFmt(t, step) + '</text>';
+      s += '<text x="' + X(t) + '" y="' + (m.t + ph + 15) + '" font-family="' + MONO + '" font-size="10.5" fill="#65675e" text-anchor="middle">' + tickFmt(t, step) + '</text>';
+    }
+    s += '<rect x="' + m.l + '" y="' + m.t + '" width="' + pw + '" height="' + ph + '" fill="none" stroke="#bfc1b7"/>';
+    s += '<g clip-path="url(#corrClip)"><line x1="' + X(lo) + '" y1="' + Y(lo) + '" x2="' + X(hi) + '" y2="' + Y(hi) + '" stroke="#9a9b92" stroke-dasharray="5 4" stroke-width="1.3"/>';
+    if (R) s += '<line x1="' + X(lo) + '" y1="' + Y(R.a * lo + R.b) + '" x2="' + X(hi) + '" y2="' + Y(R.a * hi + R.b) + '" stroke="#1c6fe6" stroke-width="2"/>';
+    s += '</g>';
+    d.pts.forEach(function (q) {
+      var tip = '<title>' + (q.i + 1) + '행 · 비교 ' + q.x + ' · 자사 ' + parseFloat(q.y.toPrecision(10)) + (q.used ? '' : ' (추천 계산 제외)') + '</title>';
+      s += q.used ? '<circle cx="' + X(q.x) + '" cy="' + Y(q.y) + '" r="4.5" fill="#2B3050">' + tip + '</circle>'
+                  : '<circle cx="' + X(q.x) + '" cy="' + Y(q.y) + '" r="4.5" fill="#fff" stroke="#d14300" stroke-width="1.8">' + tip + '</circle>';
+    });
+    var xl = '비교 장비' + (d.ur ? ' (' + d.ur + ')' : ''), yl = '자사 장비' + (mode === 'manual' ? ' × 수동 factor' : mode === 'reco' ? ' × 추천 factor' : '') + (d.uy ? ' (' + d.uy + ')' : '');
+    s += '<text x="' + (m.l + pw / 2) + '" y="' + (H - 8) + '" font-family="' + FONT + '" font-size="11.5" font-weight="600" fill="#23251d" text-anchor="middle">' + esc(xl) + '</text>';
+    s += '<text transform="translate(13 ' + (m.t + ph / 2) + ') rotate(-90)" font-family="' + FONT + '" font-size="11.5" font-weight="600" fill="#23251d" text-anchor="middle">' + esc(yl) + '</text>';
+    return s + '</svg>';
+  }
+  function eqText(R) { return R ? 'y = ' + fmt(R.a, 4) + 'x ' + (R.b < 0 ? '− ' : '+ ') + fmt(Math.abs(R.b), 4) : '—'; }
+  function draw() {
+    var d = data(), R = regress(d.pts); last = { d: d, R: R };
+    Array.prototype.forEach.call(seg.children, function (b) { var on = b.getAttribute('data-m') === mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+    var fl = mode === 'manual' ? '수동 factor ' + fmt(d.f, 2) : mode === 'reco' ? '추천 factor ' + fmt(d.f, 2) : '보정 전';
+    sub.textContent = '· ' + (d.item ? d.item + ' · ' : '') + fl;
+    if (!R) {
+      var why = mode === 'reco' && !isFinite(d.f) ? '추천 factor가 아직 없습니다.' : d.pts.length < 2 ? '비교 장비 · 자사 장비 값이 모두 있는 행이 2개 이상 있어야 그래프를 그립니다.' : '비교 장비 값이 모두 같아 회귀선을 그릴 수 없습니다.';
+      chartEl.innerHTML = d.pts.length >= 1 && isFinite(d.f) ? svg(d, null, 400, 360) + '<p id="corrNote">' + why + '</p>' : '<div class="empty">' + why + '</div>';
+    } else chartEl.innerHTML = svg(d, R, 400, 360);
+    statsEl.innerHTML = '<div class="eq">회귀식<b>' + eqText(R) + '</b></div><div>R²<b>' + (R ? fmt(R.r2, 4) : '—') + '</b></div><div>n<b>' + d.pts.length + '</b></div>' +
+      '<div class="pc-only">기울기<b>' + (R ? fmt(R.a, 4) : '—') + '</b></div><div class="pc-only">절편<b>' + (R ? fmt(R.b, 4) : '—') + '</b></div>';
+    document.getElementById('corrPng').disabled = !R;
+  }
+  var opener = null;
+  function open(e) { opener = e && e.currentTarget; ov.hidden = false; draw(); document.getElementById('corrClose').focus(); }
+  function close() { ov.hidden = true; if (opener) try { opener.focus(); } catch (e) {} }
+  document.getElementById('corrBtn').addEventListener('click', open);
+  document.getElementById('corrBtnM').addEventListener('click', open);
+  document.getElementById('corrClose').addEventListener('click', close);
+  ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !ov.hidden) close(); });
+  seg.addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { mode = b.getAttribute('data-m'); draw(); } });
+  /* 그림 저장: 그래프를 그릴 때 PNG를 미리 만들어 두고, 누르면 바로 내려받음(파일 이름 유지) */
+  var png = null, pngSeq = 0;
+  function preparePng() {
+    var my = ++pngSeq; if (png) { URL.revokeObjectURL(png.url); png = null; }
+    if (!last || !last.R) return;
+    var d = last.d, R = last.R, fl = mode === 'manual' ? '수동 factor ' + fmt(d.f, 2) + ' 적용' : mode === 'reco' ? '추천 factor ' + fmt(d.f, 2) + ' 적용' : '보정 전';
+    var head = { title: '상관성 그래프' + (d.item ? ' · ' + d.item : '') + ' · ' + fl, line: eqText(R) + '   R² = ' + fmt(R.r2, 4) + '   n = ' + R.n };
+    var W = 520, H = 520, sc = 3, s = svg(d, R, W, H, head);
+    var now = new Date(), pad = function (x) { return String(x).padStart(2, '0'); };
+    var ymd = String(now.getFullYear()).slice(2) + pad(now.getMonth() + 1) + pad(now.getDate());
+    var name = [ymd, String(d.item || '').trim().replace(/[\\/:*?"<>|\s]+/g, '_'), 'correlation'].filter(Boolean).join('_') + '.png';
+    var img = new Image();
+    img.onload = function () {
+      var cv = document.createElement('canvas'); cv.width = W * sc; cv.height = H * sc;
+      var g = cv.getContext('2d'); g.scale(sc, sc); g.drawImage(img, 0, 0, W, H);
+      cv.toBlob(function (blob) { if (my !== pngSeq || !blob) return; png = { url: URL.createObjectURL(blob), name: name }; }, 'image/png');
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+  }
+  var _draw = draw; draw = function () { _draw(); preparePng(); };
+  document.getElementById('corrPng').addEventListener('click', function () {
+    if (!png) { setTimeout(function () { if (png) document.getElementById('corrPng').click(); }, 300); return; }
+    var a = document.createElement('a'); a.href = png.url; a.download = png.name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   });
 })();
 </script>
