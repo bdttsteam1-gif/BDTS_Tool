@@ -3,7 +3,8 @@
      (c) 2026 @jms. Original work. Modified versions are welcome; please keep this notice.
      Changes: (날짜 / 내용 / 수정한 사람) 을 아래에 한 줄씩 추가하세요.
      2026-10-14 / Rev.02: 디자인(맑은 고딕) · 실험 규칙 ①②③ 화면 · 팝업 잘림 수정 · 마우스 뒤로 버튼 · 모바일 화면 /
-     TS_Rev.02_261014 -->
+     2026-10-20 / Rev.03: 엑셀 다운로드 창 — 범위(Item · 장비 · Lot · 조건 조합) 선택 · 대시보드 시트 포함 여부 선택 · 실험 규칙이 없으면 '실험 규칙' 시트 제외 /
+     TS_Rev.03_261020 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -204,6 +205,8 @@ table.edit input:focus,table.edit select:focus{outline:2px solid var(--accent);o
 .copyto.down .menu{bottom:auto;top:calc(100% + 6px)}
 
 .modal .ft{flex:none;padding:10px 18px;border-top:1px solid var(--line);text-align:right;background:#fcfcfa;border-radius:0 0 6px 6px}
+/* 엑셀 다운로드 창 (Rev.03) */
+.xsec{margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}.xsec:last-child{border-bottom:0;margin-bottom:0}.xfil{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px}.xfil .sel select{max-width:170px}.xsec .ck{padding:2px 0}.xsec .ordopt{margin-top:8px}
 
 /* ===== 모바일 (화면 폭 820px 이하): 왼쪽 목록은 ☰ 메뉴로 · 카드·표는 한 줄로 쌓기 · 넓은 표는 표 안에서 옆으로 ===== */
 #menuBtn{display:none}
@@ -257,7 +260,7 @@ table.edit input:focus,table.edit select:focus{outline:2px solid var(--accent);o
 <div class="app">
 <div class="navback" data-act="navclose"></div>
 <aside class="rail">
-  <div class="brand"><svg class="jms-mark" viewBox="0 0 120 120" role="img" aria-label="@jms"><rect x="12" y="52" width="46" height="46" rx="20" fill="#2B3050"/><path d="M64 98 C72 72 77 52 84 52 C91 52 96 72 104 98" fill="none" stroke="#2B3050" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle cx="84" cy="28" r="13" fill="#FF6A4D"/></svg><div><b>Raw Data 정리 도구</b><small>TS_Rev.02_261014</small></div></div>
+  <div class="brand"><svg class="jms-mark" viewBox="0 0 120 120" role="img" aria-label="@jms"><rect x="12" y="52" width="46" height="46" rx="20" fill="#2B3050"/><path d="M64 98 C72 72 77 52 84 52 C91 52 96 72 104 98" fill="none" stroke="#2B3050" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><circle cx="84" cy="28" r="13" fill="#FF6A4D"/></svg><div><b>Raw Data 정리 도구</b><small>TS_Rev.03_261020</small></div></div>
   <label id="drop" title="xlsx · csv 여러 개 가능 · 화면 아무 곳에나 끌어다 놓아도 됨">📂 파일 열기 (xlsx · csv)<input id="file" type="file" accept=".xlsx,.xlsm,.csv,.txt" multiple></label>
   <nav id="tabs"></nav>
   <div class="railfoot" id="railfoot">ichroma · AFIAS raw data<br>분류 정리 · 대시보드 · 엑셀 다운로드</div>
@@ -779,8 +782,8 @@ const MD = (() => {
     computeStats(sh);
   }
   // 엑셀 다운로드용 열 배치: 'original'(원본 그대로) | 'sorted'(Item → Lot → 조건 → 측정일 → 원본 순서). 조건 배정은 그대로 두고 열 위치만 바꿈
-  function applyLayout(sh, mode) {
-    const a = sh.tests.slice();
+  function applyLayout(sh, mode, filt) {
+    let a = sh.tests.slice(); if (filt) a = filtered(a, filt); // filt: 엑셀 다운로드 범위 (Rev.03) — 열 배치만 바꾸고 조건 배정은 그대로
     if (mode === 'sorted') a.sort((x, y) => x.product.localeCompare(y.product) || x.lot.localeCompare(y.lot) || (x.cond == null ? 1e9 : x.cond) - (y.cond == null ? 1e9 : y.cond) || x.date.localeCompare(y.date) || x.gi - y.gi);
     a.forEach((t, i) => { t.col = i + 2; t.colL = colL(i + 2); }); sh.layoutTests = a; sh.layoutMode = mode;
   }
@@ -1349,25 +1352,46 @@ const UI = (() => {
   }
   function recompute() { MD.buildSheets(); }
   function flash(msg, ms) { const d = document.createElement('div'); d.className = 'flash' + (ms ? ' warn' : ''); d.textContent = msg; if (ms) { d.title = '클릭하면 닫힘'; d.onclick = () => d.remove(); } document.body.appendChild(d); setTimeout(() => d.remove(), ms || 2200); }
-  // 장비 시트가 들어가는 다운로드는 열 순서(원본 그대로 / 정렬)를 먼저 확인 — 기본은 원본. 조건 배정은 원본 기준 규칙 그대로
-  function askOrder(scope) {
-    const hasDev = scope === 'all' || (scope === 'tab' && ['device', 'item', 'lot', 'graph'].includes(S.ui.tab)); if (!hasDev) return Promise.resolve('original');
+  // 엑셀 다운로드 창 (Rev.03): ① 범위(Item · 장비 · Lot · 조건 조합, 기본은 화면 필터) ② 포함할 시트(대시보드 선택) ③ 장비 시트 열 순서(원본 그대로 / 정렬). 조건 배정은 원본 기준 규칙 그대로
+  function askOptions(scope) {
+    const all = S.sheets.flatMap(s => s.tests); const hasDev = scope === 'all' || (scope === 'tab' && ['device', 'item', 'lot', 'graph'].includes(S.ui.tab));
+    const f0 = S.ui.filter || {}; const extra = {}; if (f0.date) extra.date = f0.date; if (f0.errType) extra.errType = f0.errType;
+    const hasCond = S.sheets.some(s => s.hasConds); const keys = ['product', 'device', 'lot'].concat(hasCond ? ['cond'] : []);
+    const GET = { product: t => t.product, device: t => t.device, lot: t => t.lot, cond: t => MD.condName(t) }; const LAB = { product: 'Item', device: '장비', lot: 'Lot', cond: '조건' };
     const rl = S.sheets.filter(sh => sh.hasConds).slice(0, 3).map(sh => `<b>${esc(sh.name)}</b> — ${sh.conds.slice(0, 3).map(c => `${esc(c.name)} ${c.n}건 (원본 ${c.from}~${c.to})`).join(' · ')}${sh.conds.length > 3 ? ' …' : ''}`).join('<br>');
+    const cur = {}; keys.forEach(k => cur[k] = f0[k] || '');
+    const extraTxt = Object.entries(extra).map(([k, v]) => `${{ date: '측정일', errType: '에러 유형' }[k]} = ${esc(v)}`).join(' · ');
+    let no = 1; const num = () => ['①', '②', '③'][no++ - 1];
     return new Promise(res => {
       const m = document.createElement('div'); m.className = 'modal';
-      m.innerHTML = `<div class="box" style="max-width:600px"><div class="hd"><b>엑셀 다운로드 — 장비 시트 열 순서</b><span class="close" data-ordcancel="1">✕</span></div><div style="padding:14px 18px;line-height:1.7">
+      m.innerHTML = `<div class="box" style="max-width:600px"><div class="hd"><b>엑셀 다운로드${scope === 'all' ? ' (전체)' : scope === 'cats' ? ' (선택 분류만)' : ' (이 탭만)'}</b><span class="close" data-ordcancel="1">✕</span></div><div style="padding:14px 18px;line-height:1.7">
+        <div class="xsec"><b>${num()} 범위</b> <span class="muted sm">기본은 지금 화면에 걸린 필터 · 조합할 수 있음 (예: 장비 AFIAS-3 + Item HbA1c → AFIAS-3의 HbA1c만)</span><div class="xfil">${keys.map(k => `<label class="sel">${LAB[k]} <select data-xf="${k}"></select></label>`).join('')}</div>${extraTxt ? `<label class="ck"><input type="checkbox" data-xextra checked> 화면의 추가 필터도 함께 적용 (${extraTxt})</label>` : ''}<div class="sm" data-xcount></div></div>
+        ${scope === 'all' ? `<div class="xsec"><b>${num()} 포함할 시트</b><label class="ck"><input type="checkbox" data-xdash checked> 대시보드 시트 (전체 · 장비 · Item · Lot)</label><div class="muted sm">장비 시트 · ERROR_모음은 항상 포함 · <span data-xrule></span></div></div>` : ''}
+        ${hasDev ? `<div class="xsec"><b>${num()} 장비 시트 열 순서</b>
         <label class="ordopt"><input type="radio" name="ordmode" value="original" checked> <b>원본 순서 그대로 (기본)</b><br><span class="muted sm">화면·실험 규칙과 같은 순서. 원본 열보다 한 칸 오른쪽 (A열이 항목 이름이라 원본 ALF열 → 엑셀 ALG열)</span></label>
         <label class="ordopt"><input type="radio" name="ordmode" value="sorted"> <b>정렬해서 받기</b> — Item → Lot → 조건 → 측정일 → 원본 순서<br><span class="muted sm">열 위치만 바뀌고 <b>조건 배정은 원본에서 정한 규칙 그대로</b> 따라갑니다. 원래 위치는 3행 '원본 열'에 표시</span></label>
-        ${rl ? `<div class="ordrule">현재 규칙: ${rl}</div>` : ''}
+        ${rl ? `<div class="ordrule">현재 규칙: ${rl}</div>` : ''}</div>` : ''}
 </div><div class="ft"><span class="btn g" data-ordcancel="1">취소</span> <span class="btn" data-ordok="1">다운로드</span></div></div>`;
       document.body.appendChild(m);
-      m.addEventListener('click', e => { if (e.target === m) { m.remove(); res(null); return; } const t = e.target.closest('[data-ordok],[data-ordcancel]'); if (!t) return; const v = (m.querySelector('input[name=ordmode]:checked') || {}).value; m.remove(); res(t.dataset.ordok ? v : null); });
+      const filt = () => { const f = Object.assign({}, cur); const ex = m.querySelector('[data-xextra]'); if (ex && ex.checked) Object.assign(f, extra); return f; };
+      const rebuild = () => {
+        // 각 칸의 보기는 다른 칸의 선택과 맞는 테스트에서만 모음 (예: 장비를 고르면 그 장비에 있는 Item · Lot만)
+        keys.forEach(k => { const other = Object.assign({}, cur); other[k] = ''; const opts = uniq(MD.filtered(all, other).map(GET[k]).filter(Boolean)); if (cur[k] && !opts.includes(cur[k])) cur[k] = ''; const sel = m.querySelector(`[data-xf="${k}"]`); sel.innerHTML = `<option value="">전체</option>` + opts.map(o => `<option value="${esc(o)}" ${cur[k] === o ? 'selected' : ''}>${esc(o)}</option>`).join(''); });
+        const ft = MD.filtered(all, filt()); const active = Object.values(filt()).some(Boolean);
+        m.querySelector('[data-xcount]').innerHTML = active ? `선택 범위: <b>테스트 ${ft.length}건</b> / 전체 ${all.length}건 · 장비 시트 ${uniq(ft.map(t => MD.sheetOf(t).key)).length}개${ft.length ? '' : ' <span class="bad pad">테스트가 없어 내려받을 수 없음</span>'}` : `전체 테스트 ${all.length}건 · 장비 시트 ${S.sheets.length}개`;
+        const rs = m.querySelector('[data-xrule]'); if (rs) rs.textContent = ft.some(t => MD.condName(t)) ? "'실험 규칙' 시트: 규칙(조건)이 있어 포함" : "'실험 규칙' 시트: 규칙(조건)이 없어 제외";
+        m.querySelector('[data-ordok]').classList.toggle('dis', !ft.length);
+      };
+      rebuild();
+      m.addEventListener('change', e => { const el = e.target; if (el.dataset.xf) cur[el.dataset.xf] = el.value; if (el.dataset.xf || el.dataset.xextra !== undefined) rebuild(); });
+      m.addEventListener('click', e => { if (e.target === m) { m.remove(); res(null); return; } const t = e.target.closest('[data-ordok],[data-ordcancel]'); if (!t) return; if (t.dataset.ordok && t.classList.contains('dis')) return; const ord = (m.querySelector('input[name=ordmode]:checked') || {}).value || 'original'; const dash = (m.querySelector('[data-xdash]') || { checked: true }).checked; const f = filt(); m.remove(); res(t.dataset.ordok ? { order: ord, filter: f, dash } : null); });
     });
   }
   async function download(scope) {
-    const om = await askOrder(scope); if (!om) return;
+    if (scope === 'tab' && S.ui.tab === 'rules' && !S.sheets.some(s => s.hasConds)) { flash('실험 규칙(조건)이 없어 엑셀에 넣을 내용이 없습니다. 규칙을 정하면 포함됩니다.', 5000); return; }
+    const o = await askOptions(scope); if (!o) return;
     flash('엑셀 파일을 만드는 중…'); await new Promise(r => setTimeout(r, 30));
-    try { const blob = await XW.build(scope, om); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); const base = uniq(S.tests.map(t => t.product)).slice(0, 2).join('_') || 'raw_data'; a.download = `${base}_정리${scope === 'all' ? '' : scope === 'cats' ? '_분류' : '_' + TABS.find(x => x.x === S.ui.tab || x[0] === S.ui.tab)[1]}.xlsx`; a.click(); flash('다운로드 완료'); }
+    try { const blob = await XW.build(scope, o.order, o.filter, o.dash); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); const ft = MD.filtered(S.tests, o.filter); const base = [o.filter.device, ...uniq(ft.map(t => t.product)).slice(0, 2), o.filter.lot].filter(Boolean).join('_') || 'raw_data'; a.download = `${base}_정리${scope === 'all' ? '' : scope === 'cats' ? '_분류' : '_' + TABS.find(x => x.x === S.ui.tab || x[0] === S.ui.tab)[1]}.xlsx`; a.click(); flash('다운로드 완료'); }
     catch (e) { console.error(e); flash('오류: ' + e.message); }
   }
   return { render, init, back, afterLayout, esc, f, PAL, PAL20, bandStats, recompute, flash };
@@ -1421,6 +1445,8 @@ const XW = (() => {
     const xfs = XF.map(([fo, fi, nf, al]) => `<xf numFmtId="${nf}" fontId="${fo}" fillId="${fi}" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1"${al ? ' applyAlignment="1"' : ''}>${al ? `<alignment horizontal="${al === 'c' ? 'center' : 'left'}" vertical="center"/>` : ''}</xf>`);
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="4"><numFmt numFmtId="164" formatCode="0.00"/><numFmt numFmtId="165" formatCode="0.0000"/><numFmt numFmtId="166" formatCode="0.0"/><numFmt numFmtId="167" formatCode="0"/></numFmts><fonts count="${fonts.length}">${fonts.join('')}</fonts><fills count="${fills.length}">${fills.join('')}</fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles><dxfs count="2"><dxf><font><color rgb="FFA3352B"/><b/></font><fill><patternFill patternType="solid"><fgColor rgb="FFF6D3CF"/><bgColor rgb="FFF6D3CF"/></patternFill></fill></dxf><dxf><font><color rgb="FF4A6A1A"/><b/></font><fill><patternFill patternType="solid"><fgColor rgb="FFE3F2C9"/><bgColor rgb="FFE3F2C9"/></patternFill></fill></dxf></dxfs></styleSheet>`;
   }
+  // 다운로드 범위 (Rev.03): XT = 범위 안 테스트(원본 순서), XS = 테스트가 남은 장비 시트. 각 시트의 xtests(원본 순서) · layoutTests(열 배치 순서) · xconds(범위 안 테스트로 다시 센 조건)는 build()에서 채우고 끝나면 지움
+  let XT = [], XS = [];
   // ---- 시트 객체 ----
   class Sheet {
     constructor(name) { this.name = name; this.rows = new Map(); this.merges = []; this.widths = {}; this.freeze = null; this.cf = []; this.charts = []; this.maxR = 0; this.maxC = 0; }
@@ -1499,17 +1525,17 @@ const XW = (() => {
   function xMetrics(sh) { return sh._xm || (sh._xm = sh.metrics.filter(m => !(m.k > 1)).map(m => m.k === 1 ? Object.assign({}, m, { name: 'Value' }) : m)); }
   function layoutSheet(sh) {
     // 행 배치
-    const L = { nTest: sh.tests.length };
+    const L = { nTest: sh.layoutTests.length };
     L.rowCond = 2; L.rowSrc = 3; L.rowName = 4; L.rowItem = 5; L.rowLot = 6; L.rowDate = 7; L.rowSerial = 8; L.rowTF = 9;
     L.metricRow = {}; let r = 10; xMetrics(sh).forEach(m => { L.metricRow[m.key] = r++; });
     L.rowRawMark = r + 1; L.rawStart = r + 2;
-    L.statCol0 = sh.tests.length + 3; // 통계 블록 시작 열
-    L.condCol = {}; sh.conds.forEach((c, i) => { L.condCol[c.id] = L.statCol0 + i * 7; });
-    L.chartCol = L.statCol0 + (sh.conds.length ? sh.conds.length * 7 : 0) + 1;
+    L.statCol0 = sh.layoutTests.length + 3; // 통계 블록 시작 열
+    L.condCol = {}; sh.xconds.forEach((c, i) => { L.condCol[c.id] = L.statCol0 + i * 7; });
+    L.chartCol = L.statCol0 + (sh.xconds.length ? sh.xconds.length * 7 : 0) + 1;
     return L;
   }
   function deviceSheet(sh, L, layouts) {
-    const ws = new Sheet(sh.name); const ts = sh.layoutTests || sh.tests; const n = ts.length;
+    const ws = new Sheet(sh.name); const ts = sh.layoutTests; const n = ts.length;
     ws.width(1, 26); for (let c = 2; c <= n + 1; c++) ws.width(c, 11);
     const dates = uniq(ts.map(t => t.date)).sort(); const products = uniq(ts.map(t => t.product)); const lots = uniq(ts.map(t => t.lot));
     ws.set(1, 1, dates.length > 1 ? `${dates[0]} ~ ${dates[dates.length - 1]}` : dates[0] || '', 1);
@@ -1539,12 +1565,12 @@ const XW = (() => {
     // 통계 블록
     if (sh.hasConds) {
       const SC = ['AVG', 'SD', 'CV%', '기준값', 'Bias% vs 기준값', `Bias% vs ${MD.isAfias(sh.device) ? S.opts.refAfias : S.opts.refIchroma}`];
-      const refSh = MD.refSheetOf(sh); const refL = refSh && refSh.hasConds ? layouts[refSh.key] : null;
-      sh.conds.forEach(c => {
+      const refSh = MD.refSheetOf(sh); const refL = refSh && refSh.hasConds ? layouts[refSh.key] : null; // 기준 장비 시트가 이번 범위에 없으면 layouts에 없음 → '-'
+      sh.xconds.forEach(c => {
         const c0 = L.condCol[c.id]; ws.set(1, c0, `${c.name} 통계 (${c.n} test)`, 24); for (let k = 1; k < 6; k++) ws.set(1, c0 + k, '', 24);
         SC.forEach((h, k) => { ws.set(L.rowCond, c0 + k, h, 20); ws.width(c0 + k, k >= 4 ? 17 : 11); });
         if (!ts.some(t => t.cond === c.id)) return;
-        const rc = refL ? refSh.conds.find(x => x.name === c.name || (c.key && x.key === c.key)) : null;
+        const rc = refL ? refSh.xconds.find(x => x.name === c.name || (c.key && x.key === c.key)) : null;
         const crng = `${AA(L.rowCond, 2)}:${AA(L.rowCond, n + 1)}`; const cnm = `"${String(c.name + (c.ref != null ? ` (기준 ${c.ref})` : '')).replace(/"/g, '""')}"`;
         xMetrics(sh).forEach(m => {
           const row = L.metricRow[m.key]; const rng = `${AA(row, 2)}:${AA(row, n + 1)}`; const st = m.dec === 4 ? 22 : m.dec === 1 ? 15 : 14;
@@ -1567,7 +1593,7 @@ const XW = (() => {
   const MAXG = 12; let bandWs = null, bandCol = 1;
   function bandSheet() { if (!bandWs) { bandWs = new Sheet('그래프_요약값'); bandWs.set(1, 1, '테스트가 많은 단위의 요약 그래프용 값 (측정 지점별 중앙값 · 5% · 95%) — 장비 시트 raw data에서 계산', 9); bandCol = 1; } return bandWs; }
   function addCharts(ws, sh, L) {
-    const units = MD.units(sh); let row = 2; const col = L.chartCol; let nBand = 0;
+    const units = MD.units({ hasConds: sh.hasConds, conds: sh.xconds, tests: sh.xtests }); let row = 2; const col = L.chartCol; let nBand = 0;
     const kinds = [['scan', 'SCAN DATA'], ['orig', '원본 스캔 (ORIG 2POINT RAW / Raw data)']];
     units.forEach(u => {
       for (let sc = 1; sc <= sh.nScan; sc++) {
@@ -1614,11 +1640,11 @@ const XW = (() => {
   }
   function biasCfRows(ws, r1, r2, c0 = 1) { if (r2 >= r1) { ws.cfBias(`${A(r1, c0 + 7)}:${A(r2, c0 + 8)}`); ws.cfBias(`${A(r1, c0 + 11)}:${A(r2, c0 + 11)}`); ws.cfBias(`${A(r1, c0 + 14)}:${A(r2, c0 + 14)}`); ws.cfBias(`${A(r1, c0 + 17)}:${A(r2, c0 + 17)}`); } }
   function dashAll(layouts) {
-    const ws = new Sheet('대시보드_전체'); const ts = S.tests; title(ws, '대시보드 — 전체 요약', `원본: ${S.files.join(', ')} · 생성 ${new Date().toLocaleString('ko-KR')} · Bias 색: |Bias|>${S.opts.bias1}% 연두, >${S.opts.bias2}% 빨강`);
+    const ws = new Sheet('대시보드_전체'); const ts = XT; title(ws, '대시보드 — 전체 요약', `원본: ${S.files.join(', ')} · 생성 ${new Date().toLocaleString('ko-KR')} · Bias 색: |Bias|>${S.opts.bias1}% 연두, >${S.opts.bias2}% 빨강`);
     const byKey = (arr, fn) => { const m = new Map(); arr.forEach(x => { const k = fn(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); }); return m; };
     let r = 4; header(ws, r, ['항목', '값', '내용'], 1, [22, 12, 60]); r++;
     const errs = ts.filter(t => t.isError); const dates = [...byKey(ts, t => t.date)].sort();
-    [['테스트 총 갯수', ts.length, `Item ${uniq(ts.map(t => t.product)).join(', ')}`], ['Item 수', uniq(ts.map(t => t.product)).length, ''], ['Lot 수', uniq(ts.map(t => t.lot)).length, uniq(ts.map(t => t.lot)).join(', ')], ['장비 대수 (Serial)', uniq(ts.map(t => t.serial)).length, uniq(ts.map(t => t.device)).join(', ')], ['에러 갯수', errs.length, errs.length ? [...byKey(errs.flatMap(t => t.errs), e => e.type)].map(([k, v]) => `${k} ${v.length}`).join(', ') : '없음'], ['측정일', dates.length, dates.length ? `${dates[0][0]} ~ ${dates[dates.length - 1][0]}` : ''], ['조건(그룹)', S.sheets.reduce((s, x) => s + x.conds.length, 0), S.sheets.some(x => x.hasConds) ? S.sheets.filter(x => x.hasConds).map(x => `${x.name}: ${x.conds.map(c => c.name).join('/')}`).join(' · ') : '없음 — AVG/CV/Bias 계산 안 함']].forEach(([a, b, c]) => { ws.set(r, 1, a, 3); ws.set(r, 2, b, 17); ws.set(r, 3, c); r++; });
+    [['테스트 총 갯수', ts.length, `Item ${uniq(ts.map(t => t.product)).join(', ')}`], ['Item 수', uniq(ts.map(t => t.product)).length, ''], ['Lot 수', uniq(ts.map(t => t.lot)).length, uniq(ts.map(t => t.lot)).join(', ')], ['장비 대수 (Serial)', uniq(ts.map(t => t.serial)).length, uniq(ts.map(t => t.device)).join(', ')], ['에러 갯수', errs.length, errs.length ? [...byKey(errs.flatMap(t => t.errs), e => e.type)].map(([k, v]) => `${k} ${v.length}`).join(', ') : '없음'], ['측정일', dates.length, dates.length ? `${dates[0][0]} ~ ${dates[dates.length - 1][0]}` : ''], ['조건(그룹)', XS.reduce((s, x) => s + x.xconds.length, 0), XS.some(x => x.xconds.length) ? XS.filter(x => x.xconds.length).map(x => `${x.name}: ${x.xconds.map(c => c.name).join('/')}`).join(' · ') : '없음 — AVG/CV/Bias 계산 안 함']].forEach(([a, b, c]) => { ws.set(r, 1, a, 3); ws.set(r, 2, b, 17); ws.set(r, 3, c); r++; });
     r++; ws.set(r++, 1, '① Item · Lot별 현황', 1); header(ws, r, ['Item', 'Lot', '장비', '테스트', '에러', 'Value 최소', 'Value 최대', '조건'], 1, [22, 14, 24, 10, 10, 12, 12, 30]); r++;
     [...byKey(ts, t => t.product + '\u0001' + t.lot)].forEach(([k, a]) => { const [p, l] = k.split('\u0001'); const v = MD.nums(a.map(t => RP.resNum(t.results[0]))); ws.set(r, 1, p, 1); ws.set(r, 2, l); ws.set(r, 3, uniq(a.map(t => t.device)).join(', ')); ws.set(r, 4, a.length, 17); ws.set(r, 5, a.filter(t => t.isError).length, 17); ws.set(r, 6, v.length ? __mi(v) : '-', 25); ws.set(r, 7, v.length ? __ma(v) : '-', 25); ws.set(r, 8, uniq(a.map(t => MD.condName(t)).filter(Boolean)).join(', ') || '없음'); r++; });
     r++; ws.set(r++, 1, '② 장비', 1); header(ws, r, ['장비', 'Serial 수', '테스트', '에러', 'Item', '측정일 수']); r++;
@@ -1634,40 +1660,40 @@ const XW = (() => {
     const ws = new Sheet('대시보드_장비'); title(ws, '대시보드 — 장비', `① 시트 × Item × Lot 현황 · ② 장비 × 조건 AVG/CV/Bias (장비 시트 통계 블록 수식 참조) · 기준 장비: AFIAS ${S.opts.refAfias} / ichroma ${S.opts.refIchroma}`);
     let r = 4; ws.set(r++, 1, '① 장비 시트 현황 (시트 × Item × Lot)', 1);
     // 피벗: 시트 | 장비 | Serial 수 | Item | #1 Lot·테스트·에러 | #2 … | 합계
-    const blocks = S.sheets.map(sh => { const byItem = new Map(); sh.tests.forEach(t => { if (!byItem.has(t.product)) byItem.set(t.product, new Map()); const m = byItem.get(t.product); if (!m.has(t.lot)) m.set(t.lot, []); m.get(t.lot).push(t); }); return { sh, items: [...byItem].sort((a, b) => a[0].localeCompare(b[0])) }; });
+    const blocks = XS.map(sh => { const byItem = new Map(); sh.xtests.forEach(t => { if (!byItem.has(t.product)) byItem.set(t.product, new Map()); const m = byItem.get(t.product); if (!m.has(t.lot)) m.set(t.lot, []); m.get(t.lot).push(t); }); return { sh, items: [...byItem].sort((a, b) => a[0].localeCompare(b[0])) }; });
     const K = Math.max(1, ...blocks.flatMap(b => b.items.map(([, m]) => m.size)));
     const hr = r; ['시트', '장비', 'Serial 수', 'Item'].forEach((h, i) => { ws.set(hr, 1 + i, h, 2); ws.set(hr + 1, 1 + i, '', 2); ws.merge(hr, 1 + i, hr + 1, 1 + i); });
     for (let k = 0; k < K; k++) { const c0 = 5 + k * 3; ws.set(hr, c0, `#${k + 1}`, 2); ws.set(hr, c0 + 1, '', 2); ws.set(hr, c0 + 2, '', 2); ws.merge(hr, c0, hr, c0 + 2); ['Lot No.', '테스트', '에러'].forEach((h, i) => { ws.set(hr + 1, c0 + i, h, 2); ws.width(c0 + i, i ? 8 : 13); }); }
     const cT = 5 + K * 3; ws.set(hr, cT, 'Item 합계', 2); ws.set(hr + 1, cT, '', 2); ws.merge(hr, cT, hr + 1, cT); ws.width(cT, 10); ws.width(3, 9); ws.width(4, 18);
     r = hr + 2;
-    blocks.forEach(({ sh, items }) => { const r0 = r; items.forEach(([prod, lots]) => { const arr = [...lots].sort((a, b) => a[0].localeCompare(b[0])); ws.set(r, 4, prod, 1); arr.forEach(([lot, a], k) => { const c0 = 5 + k * 3; ws.set(r, c0, lot); ws.set(r, c0 + 1, a.length, 17); ws.set(r, c0 + 2, a.filter(t => t.isError).length, 17); }); ws.set(r, cT, arr.reduce((x, [, a]) => x + a.length, 0), 17); r++; }); ws.set(r0, 1, sh.name, 1); ws.set(r0, 2, sh.device); ws.set(r0, 3, uniq(sh.tests.map(t => t.serial)).length, 17); if (r - 1 > r0) [1, 2, 3].forEach(c => ws.merge(r0, c, r - 1, c)); });
+    blocks.forEach(({ sh, items }) => { const r0 = r; items.forEach(([prod, lots]) => { const arr = [...lots].sort((a, b) => a[0].localeCompare(b[0])); ws.set(r, 4, prod, 1); arr.forEach(([lot, a], k) => { const c0 = 5 + k * 3; ws.set(r, c0, lot); ws.set(r, c0 + 1, a.length, 17); ws.set(r, c0 + 2, a.filter(t => t.isError).length, 17); }); ws.set(r, cT, arr.reduce((x, [, a]) => x + a.length, 0), 17); r++; }); ws.set(r0, 1, sh.name, 1); ws.set(r0, 2, sh.device); ws.set(r0, 3, uniq(sh.xtests.map(t => t.serial)).length, 17); if (r - 1 > r0) [1, 2, 3].forEach(c => ws.merge(r0, c, r - 1, c)); });
     r++; ws.set(r++, 1, '② 장비 × 조건 요약 (AVG · CV · Bias)', 1); statHeader(ws, r); r++; const r1 = r;
-    S.sheets.forEach(sh => sh.conds.forEach(c => { statRow(ws, r, sh, c, layouts[sh.key]); r++; }));
+    XS.forEach(sh => sh.xconds.forEach(c => { statRow(ws, r, sh, c, layouts[sh.key]); r++; }));
     if (r === r1) ws.set(r++, 1, '조건(그룹)이 없어 AVG/CV/Bias를 계산하지 않았습니다. HTML의 실험 규칙에서 조건을 지정하면 계산됩니다.', 9);
     biasCfRows(ws, r1, r - 1);
     r++; ws.set(r++, 1, 'Serial별 (3층 장비 비교)', 1); header(ws, r, ['장비', '조건', 'Serial', 'N', 'Value AVG', 'SD', 'CV%', 'Bias% vs 기준값']); r++; const r2 = r;
-    S.sheets.forEach(sh => { if (uniq(sh.tests.map(t => t.serial)).length < 2) return; const units = sh.hasConds ? sh.conds.map(c => ({ name: c.name, tests: c.tests, c })) : [{ name: '전체', tests: sh.tests }]; units.forEach(u => { const m = new Map(); u.tests.forEach(t => { if (!m.has(t.serial)) m.set(t.serial, []); m.get(t.serial).push(t); }); [...m].forEach(([ser, a]) => { const v = MD.nums(a.map(t => RP.resNum(t.results[0]))); const av = MD.mean(v), s = MD.sd(v); ws.set(r, 1, sh.name, 1); ws.set(r, 2, u.name); ws.set(r, 3, ser); ws.set(r, 4, v.length, 17); ws.set(r, 5, av == null ? '-' : av, 25); ws.set(r, 6, s == null ? '-' : s, 25); ws.set(r, 7, av && s != null ? s / Math.abs(av) * 100 : '-', 23); ws.set(r, 8, u.c && u.c.ref != null && av != null ? (av / u.c.ref - 1) * 100 : '-', 23); r++; }); }); });
+    XS.forEach(sh => { if (uniq(sh.xtests.map(t => t.serial)).length < 2) return; const units = sh.hasConds ? sh.xconds.map(c => ({ name: c.name, tests: c.tests, c })) : [{ name: '전체', tests: sh.xtests }]; units.forEach(u => { const m = new Map(); u.tests.forEach(t => { if (!m.has(t.serial)) m.set(t.serial, []); m.get(t.serial).push(t); }); [...m].forEach(([ser, a]) => { const v = MD.nums(a.map(t => RP.resNum(t.results[0]))); const av = MD.mean(v), s = MD.sd(v); ws.set(r, 1, sh.name, 1); ws.set(r, 2, u.name); ws.set(r, 3, ser); ws.set(r, 4, v.length, 17); ws.set(r, 5, av == null ? '-' : av, 25); ws.set(r, 6, s == null ? '-' : s, 25); ws.set(r, 7, av && s != null ? s / Math.abs(av) * 100 : '-', 23); ws.set(r, 8, u.c && u.c.ref != null && av != null ? (av / u.c.ref - 1) * 100 : '-', 23); r++; }); }); });
     if (r > r2) ws.cfBias(`${A(r2, 8)}:${A(r - 1, 8)}`);
     return ws;
   }
   function dashGroup(name, keyFn, cols, cellsFn, layouts) {
     const ws = new Sheet(name); title(ws, `대시보드 — ${name.replace('대시보드_', '')}별 현황`, '현황은 값, 조건별 통계는 장비 시트 수식 참조');
-    const m = new Map(); S.tests.forEach(t => { const k = keyFn(t); if (!m.has(k)) m.set(k, []); m.get(k).push(t); });
+    const m = new Map(); XT.forEach(t => { const k = keyFn(t); if (!m.has(k)) m.set(k, []); m.get(k).push(t); });
     let r = 4; header(ws, r, cols.concat(['장비', '테스트', 'Serial 수', '측정일', '에러', 'Value 최소', 'Value 최대', '조건']), 1, [22, 16, 16, 24, 10, 10, 24, 10, 12, 12, 30]); r++;
     [...m].forEach(([k, a]) => { const cs = cellsFn(a[0]); cs.forEach((v, i) => ws.set(r, 1 + i, v, i === 0 ? 1 : 0)); const c0 = cs.length + 1; const v = MD.nums(a.map(t => RP.resNum(t.results[0]))); ws.set(r, c0, uniq(a.map(t => t.device)).join(', ')); ws.set(r, c0 + 1, a.length, 17); ws.set(r, c0 + 2, uniq(a.map(t => t.serial)).length, 17); ws.set(r, c0 + 3, uniq(a.map(t => t.date)).sort().join(', ')); ws.set(r, c0 + 4, a.filter(t => t.isError).length, 17); ws.set(r, c0 + 5, v.length ? __mi(v) : '-', 25); ws.set(r, c0 + 6, v.length ? __ma(v) : '-', 25); ws.set(r, c0 + 7, uniq(a.map(t => MD.condName(t)).filter(Boolean)).join(', ') || '없음'); r++; });
     r++; ws.set(r++, 1, '조건별 AVG · CV · Bias', 1);
-    [...m].forEach(([k, a]) => { const rows = []; S.sheets.forEach(sh => sh.conds.forEach(c => { if (c.tests.some(t => a.includes(t))) rows.push([sh, c]); })); if (!rows.length) return; ws.set(r++, 1, cellsFn(a[0]).join(' · '), 26); statHeader(ws, r); r++; const r1 = r; rows.forEach(([sh, c]) => { statRow(ws, r, sh, c, layouts[sh.key]); r++; }); biasCfRows(ws, r1, r - 1); r++; });
+    [...m].forEach(([k, a]) => { const rows = []; XS.forEach(sh => sh.xconds.forEach(c => { if (c.tests.some(t => a.includes(t))) rows.push([sh, c]); })); if (!rows.length) return; ws.set(r++, 1, cellsFn(a[0]).join(' · '), 26); statHeader(ws, r); r++; const r1 = r; rows.forEach(([sh, c]) => { statRow(ws, r, sh, c, layouts[sh.key]); r++; }); biasCfRows(ws, r1, r - 1); r++; });
     return ws;
   }
   function errorSheet() {
     const ws = new Sheet('ERROR_모음'); title(ws, 'ERROR 모음', 'Error 코드 · TF Result 비정상 · Result의 Invalid/Error'); let r = 4;
     header(ws, r, ['시트', '열', 'Item', 'Lot', '측정일', '테스트 이름/PID', '장비 Serial', '에러 코드', '유형', 'Result', 'TF Result', 'Error', '원본 시트', '원본 열'], 1, [14, 6, 14, 14, 12, 16, 16, 22, 16, 22, 14, 14, 18, 8]); r++;
-    const es = S.tests.filter(t => t.isError); es.forEach(t => { const sh = MD.sheetOf(t); [sh.name, t.colL, t.product, t.lot, t.date, MD.testName(t), t.serial, t.errs.map(e => e.code).join(', '), uniq(t.errs.map(e => e.type)).join(', '), t.results.filter(x => x !== '').join(' / '), t.tf.join(' / '), t.error, t.src.sheet, t.src.colLetter].forEach((v, i) => ws.set(r, 1 + i, v, i === 7 ? 16 : 0)); r++; });
+    const es = XT.filter(t => t.isError); es.forEach(t => { const sh = MD.sheetOf(t); [sh.name, t.colL, t.product, t.lot, t.date, MD.testName(t), t.serial, t.errs.map(e => e.code).join(', '), uniq(t.errs.map(e => e.type)).join(', '), t.results.filter(x => x !== '').join(' / '), t.tf.join(' / '), t.error, t.src.sheet, t.src.colLetter].forEach((v, i) => ws.set(r, 1 + i, v, i === 7 ? 16 : 0)); r++; });
     if (!es.length) ws.set(r, 1, '오류 없음', 26); else { ws.set(r + 1, 1, '총 오류 수:', 1); ws.set(r + 1, 2, es.length, 17); }
     ws.freeze = [4, 0]; return ws;
   }
-  function clsSheets(catKeys, useFilter) {
-    const out = []; const ts = useFilter ? MD.filtered(S.sheets.flatMap(s => s.tests)) : S.sheets.flatMap(s => s.tests); const rows = CL.itemRows(ts); const used = new Set();
+  function clsSheets(catKeys) {
+    const out = []; const ts = XS.flatMap(s => s.xtests); const rows = CL.itemRows(ts); const used = new Set();
     catKeys.forEach(ck => {
       const sel = rows.filter(r => r.cat === ck); if (!sel.length) return;
       let nm = ('분류_' + CL.catDisplay(ck).replace(/^\d+\.\s*/, '')).replace(/[\[\]\*\?\/\\:]/g, '-').slice(0, 31); let k = 2; while (used.has(nm)) nm = nm.slice(0, 28) + '_' + (k++); used.add(nm);
@@ -1677,7 +1703,7 @@ const XW = (() => {
       const meta = [['Item', t => t.product], ['Lot', t => t.lot], ['조건', t => MD.condName(t) || '-'], ['테스트 이름/PID', t => MD.testName(t)], ['측정일', t => t.date], ['장비 Serial', t => t.serial]];
       let r = 5; meta.forEach(([n, g]) => { ws.set(r, 1, n, 3); ws.set(r, 2, '', 3); ts.forEach((t, i) => ws.set(r, 3 + i, g(t), 19)); r++; });
       sel.forEach(x => { ws.set(r, 1, x.name, x.key ? 7 : 0); ws.set(r, 2, x.desc || '', 9); ts.forEach((t, i) => { if (x.block) { const b = t.blocks.find(b => b.name === x.l && b.occ === x.occ); ws.set(r, 3 + i, b ? `${b.n}점` : ''); } else { const fd = CL.fieldOf(t, x.l, x.occ); if (fd) ws.set(r, 3 + i, fd.v); } }); r++; });
-      if (ck === '면적 값') { const sh0 = MD.sheetOf(ts[0]); S.sheets.forEach(sh => xMetrics(sh).filter(m => m.div).forEach(m => { if (sh !== sh0 && sh0.metrics.some(x => x.key === m.key)) return; ws.set(r, 1, m.name + ' (계산)', 7); ws.set(r, 2, m.div.join(' ÷ '), 9); ts.forEach((t, i) => { const v = m.get(t); if (v != null) ws.set(r, 3 + i, v, 6); }); r++; })); }
+      if (ck === '면적 값') { const sh0 = MD.sheetOf(ts[0]); XS.forEach(sh => xMetrics(sh).filter(m => m.div).forEach(m => { if (sh !== sh0 && sh0.metrics.some(x => x.key === m.key)) return; ws.set(r, 1, m.name + ' (계산)', 7); ws.set(r, 2, m.div.join(' ÷ '), 9); ts.forEach((t, i) => { const v = m.get(t); if (v != null) ws.set(r, 3 + i, v, 6); }); r++; })); }
       ws.freeze = [4, 2]; out.push(ws);
     });
     return out;
@@ -1691,21 +1717,30 @@ const XW = (() => {
     const ws = new Sheet('실험 규칙'); title(ws, '실험 규칙 · 설정', '이 파일을 만들 때 적용한 규칙'); let r = 4;
     [['Bias 색 기준', `|Bias| > ${S.opts.bias1}% 연두, > ${S.opts.bias2}% 빨강`], ['기준 장비', `AFIAS ${S.opts.refAfias} / ichroma ${S.opts.refIchroma}`], ['그래프 선 한도', `${S.opts.lineLimit}건 (초과 시 측정일별 분할)`], ['Item별 시트 분리', S.opts.splitByItem ? '예' : '아니오'], ['규칙 기준', '원본 열 순서 (조건은 원본 순서에서 배정)'], ['장비 시트 열 순서', S.sheets.some(sh => sh.layoutMode === 'sorted') ? '정렬해서 받음 (Item → Lot → 조건 → 측정일 → 원본 순서) · 조건은 원본 규칙 그대로' : '원본 순서 그대로']].forEach(([a, b]) => { ws.set(r, 1, a, 3); ws.set(r, 2, b); r++; });
     r++; header(ws, r, ['시트', '규칙', '조건', '원본 열 범위', '테스트 수', '이름', '기준값', '허용 하한', '허용 상한', '종류', '기준값 출처'], 1, [18, 14, 6, 10, 8, 26, 10, 10, 10, 10, 12]); r++;
-    S.sheets.forEach(sh => { if (!sh.conds.length) { ws.set(r, 1, sh.name, 1); ws.set(r, 2, { none: '없음(단일 샘플)', auto: '자동', range: '테스트 수 지정', repeat: '반복', cycle: '순환 반복' }[sh.rule.mode]); r++; return; } sh.conds.forEach((c, i) => { [sh.name, { auto: '자동(control 정보)', range: '테스트 수 지정', repeat: `${sh.rule.repeatN}개씩 반복`, cycle: `조건 ${sh.rule.cycleN}개 순환` }[sh.rule.mode], i + 1, `${c.from}~${c.to}`, c.n, c.name, c.ref == null ? '' : c.ref, c.lo == null ? '' : c.lo, c.hi == null ? '' : c.hi, c.type, c.src].forEach((v, k) => ws.set(r, 1 + k, v, k === 0 ? 1 : 0)); r++; }); });
+    XS.forEach(sh => { if (!sh.conds.length) { ws.set(r, 1, sh.name, 1); ws.set(r, 2, { none: '없음(단일 샘플)', auto: '자동', range: '테스트 수 지정', repeat: '반복', cycle: '순환 반복' }[sh.rule.mode]); r++; return; } sh.conds.forEach((c, i) => { [sh.name, { auto: '자동(control 정보)', range: '테스트 수 지정', repeat: `${sh.rule.repeatN}개씩 반복`, cycle: `조건 ${sh.rule.cycleN}개 순환` }[sh.rule.mode], i + 1, `${c.from}~${c.to}`, c.n, c.name, c.ref == null ? '' : c.ref, c.lo == null ? '' : c.lo, c.hi == null ? '' : c.hi, c.type, c.src].forEach((v, k) => ws.set(r, 1 + k, v, k === 0 ? 1 : 0)); r++; }); });
     return ws;
   }
-  async function build(scope, order) {
-    bandWs = null; S.sheets.forEach(sh => MD.applyLayout(sh, order === 'sorted' ? 'sorted' : 'original'));
-    try { return await build2(scope); } finally { S.sheets.forEach(sh => MD.applyLayout(sh, 'original')); S.sheets.forEach(sh => { sh.layoutTests = null; sh.layoutMode = null; }); }
+  // scope: 'all' 전체 | 'tab' 이 탭만 | 'cats' 선택 분류만. order: 장비 시트 열 순서. filt: 범위(Item · 장비 · Lot · 조건 …, 비면 전체). dash: 대시보드 시트 포함(전체 받기일 때만)
+  async function build(scope, order, filt, dash) {
+    bandWs = null; filt = filt || {}; const active = Object.values(filt).some(Boolean);
+    S.sheets.forEach(sh => {
+      MD.applyLayout(sh, order === 'sorted' ? 'sorted' : 'original', active ? filt : null);
+      sh.xtests = active ? MD.filtered(sh.tests, filt) : sh.tests.slice(); // 원본 순서 (그래프 · 피벗 순서용)
+      sh.xconds = sh.conds.map(c => { const ts = sh.xtests.filter(t => t.cond === c.id); return Object.assign({}, c, { tests: ts, n: ts.length }); }).filter(c => c.n || !active); // 범위를 걸었을 때 테스트가 없는 조건은 뺌
+    });
+    XS = S.sheets.filter(sh => sh.layoutTests.length); XT = active ? MD.filtered(S.tests, filt) : S.tests;
+    try { return await build2(scope, dash !== false); }
+    finally { S.sheets.forEach(sh => MD.applyLayout(sh, 'original')); S.sheets.forEach(sh => { sh.layoutTests = null; sh.layoutMode = null; sh.xtests = null; sh.xconds = null; }); XS = []; XT = []; }
   }
-  async function build2(scope) {
-    const layouts = {}; S.sheets.forEach(sh => layouts[sh.key] = layoutSheet(sh));
-    const dev = () => S.sheets.map(sh => deviceSheet(sh, layouts[sh.key], layouts));
-    const cats = (uf) => clsSheets(S.ui.cats ? [...CL.cats.map(c => c.key).filter(k => S.ui.cats.has(k))] : ['기본 정보', '면적 값', 'Ratio', 'Result', 'System 정보'], uf);
+  async function build2(scope, dash) {
+    const layouts = {}; XS.forEach(sh => layouts[sh.key] = layoutSheet(sh));
+    const dev = () => XS.map(sh => deviceSheet(sh, layouts[sh.key], layouts));
+    const cats = () => clsSheets(S.ui.cats ? [...CL.cats.map(c => c.key).filter(k => S.ui.cats.has(k))] : ['기본 정보', '면적 값', 'Ratio', 'Result', 'System 정보']);
+    const hasRules = XS.some(sh => sh.xconds.length); // 규칙(조건)이 하나도 없으면 '실험 규칙' 시트는 넣지 않음
     let sheets;
-    if (scope === 'all') sheets = [dashAll(layouts), dashDevice(layouts), dashGroup('대시보드_Item', t => t.product, ['Item'], t => [t.product], layouts), dashGroup('대시보드_Lot', t => t.product + '\u0001' + t.lot, ['Item', 'Lot'], t => [t.product, t.lot], layouts), ...dev(), errorSheet(), ruleSheet()];
-    else if (scope === 'cats') sheets = [...cats(true)];
-    else { const tab = S.ui.tab; const map = { home: () => [dashAll(layouts)], device: () => [dashDevice(layouts), ...dev()], item: () => [dashGroup('대시보드_Item', t => t.product, ['Item'], t => [t.product], layouts), ...dev()], lot: () => [dashGroup('대시보드_Lot', t => t.product + '\u0001' + t.lot, ['Item', 'Lot'], t => [t.product, t.lot], layouts), ...dev()], error: () => [errorSheet()], cls: () => cats(true), graph: () => dev(), rules: () => [ruleSheet()] }; sheets = (map[tab] || map.home)(); }
+    if (scope === 'all') sheets = [...(dash ? [dashAll(layouts), dashDevice(layouts), dashGroup('대시보드_Item', t => t.product, ['Item'], t => [t.product], layouts), dashGroup('대시보드_Lot', t => t.product + '\u0001' + t.lot, ['Item', 'Lot'], t => [t.product, t.lot], layouts)] : []), ...dev(), errorSheet(), ...(hasRules ? [ruleSheet()] : [])];
+    else if (scope === 'cats') sheets = [...cats()];
+    else { const tab = S.ui.tab; const map = { home: () => [dashAll(layouts)], device: () => [dashDevice(layouts), ...dev()], item: () => [dashGroup('대시보드_Item', t => t.product, ['Item'], t => [t.product], layouts), ...dev()], lot: () => [dashGroup('대시보드_Lot', t => t.product + '\u0001' + t.lot, ['Item', 'Lot'], t => [t.product, t.lot], layouts), ...dev()], error: () => [errorSheet()], cls: () => cats(), graph: () => dev(), rules: () => [ruleSheet()] }; sheets = (map[tab] || map.home)(); }
     if (bandWs) sheets.push(bandWs);
     return pack(sheets);
   }
