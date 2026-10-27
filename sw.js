@@ -1,7 +1,7 @@
 /* 오프라인 저장 설정
    - 인터넷이 되면 항상 서버의 최신 파일을 먼저 받고(받은 파일로 저장본도 갱신), 안 되면 저장본을 보여 줌.
    - 파일을 추가하면 FILES에 넣고 VERSION 숫자를 올린다. */
-const VERSION = 'ts-tools-v4';
+const VERSION = 'ts-tools-v5';
 const FILES = [
   './',
   './index.html',
